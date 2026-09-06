@@ -105,7 +105,7 @@
     <div [style.display]="activeConnectionId ? 'flex' : 'none'" class="terminal-wrapper">
       <div class="terminal-header">
         <span>Terminal Activa: {{ getActiveConnectionName() }}</span>
-        <button (click)="disconnect()" class="btn-danger btn-sm">⬛ Cerrar Conexión</button>
+        <button (click)="disconnect()" class="btn-danger btn-sm" (mouseup)="$any($event.target).blur()">⬛ Cerrar Conexión</button>
       </div>
       <div #terminalContainer class="terminal-container"></div>
     </div>
@@ -116,6 +116,8 @@
     <div class="modal-content form-container">
       <h3>{{ isEditing ? 'Editar Conexión' : 'Nueva Conexión' }}</h3>
       <form (ngSubmit)="saveConnection()" #connForm="ngForm">
+        <!-- Campo oculto para preservar el id al editar -->
+        <input type="hidden" [(ngModel)]="newConnection.id" name="id">
         <div class="form-group">
           <label>Nombre del Perfil</label>
           <input type="text" [(ngModel)]="newConnection.name" name="name" required>
@@ -161,5 +163,19 @@
       </form>
     </div>
   </div>
+</div>
+
+<!-- Toast Notifications -->
+<div class="toast-container">
+  @for (toast of toasts; track toast.id) {
+    <div class="toast toast-{{ toast.type }}">
+      <span class="toast-icon">
+        @if (toast.type === 'success') { ✔ }
+        @if (toast.type === 'error') { ✖ }
+        @if (toast.type === 'info') { ℹ }
+      </span>
+      <span class="toast-message">{{ toast.message }}</span>
+    </div>
+  }
 </div>
 }

@@ -1,6 +1,6 @@
 {
   "name": "ssh-manager",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "description": "Aplicación para administrar conexiones SSH",
   "author": "Usuario",
   "main": "main.js",

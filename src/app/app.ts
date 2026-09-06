@@ -40,6 +40,18 @@ export class AppComponent implements OnInit, AfterViewInit {
     auth_type: 'password'
   };
 
+  // Toast notifications
+  toasts: { id: number; message: string; type: 'success' | 'error' | 'info' }[] = [];
+  private toastId = 0;
+
+  showToast(message: string, type: 'success' | 'error' | 'info' = 'success', duration = 3000) {
+    const id = ++this.toastId;
+    this.toasts.push({ id, message, type });
+    setTimeout(() => {
+      this.toasts = this.toasts.filter(t => t.id !== id);
+    }, duration);
+  }
+
   terminal: Terminal | null = null;
   fitAddon: FitAddon | null = null;
   @ViewChild('terminalContainer') terminalContainer!: ElementRef;
@@ -50,6 +62,7 @@ export class AppComponent implements OnInit, AfterViewInit {
     this.isLoggedIn = true;
     this.currentUser = user;
     this.loadConnections();
+    this.showToast(`Bienvenido, ${user.name}!`, 'success');
   }
 
   logout() {
@@ -118,20 +131,26 @@ export class AppComponent implements OnInit, AfterViewInit {
   }
 
   async saveConnection() {
-    console.log('[saveConnection] isEditing:', this.isEditing, '| id:', this.newConnection.id, '| obj:', JSON.stringify(this.newConnection));
+    console.log('[saveConnection] isEditing:', this.isEditing, '| id:', this.newConnection.id);
     try {
       if (this.isEditing && this.newConnection.id) {
         await this.ipc.invoke('update-connection', this.newConnection);
+        const idx = this.connections.findIndex(c => c.id === this.newConnection.id);
+        if (idx !== -1) {
+          this.connections[idx] = { ...this.newConnection };
+          this.connections = [...this.connections];
+        }
+        this.showToast('Conexión actualizada correctamente', 'success');
       } else {
         const newId = await this.ipc.invoke('add-connection', this.newConnection);
-        this.newConnection.id = newId;
+        this.connections = [...this.connections, { ...this.newConnection, id: newId }];
+        this.showToast('Conexión creada correctamente', 'success');
       }
       this.showForm = false;
       this.isEditing = false;
-      await this.loadConnections();
     } catch (err) {
       console.error('Error saving connection:', err);
-      alert('Error al guardar: ' + err);
+      this.showToast('Error al guardar la conexión', 'error');
     }
   }
 
@@ -142,9 +161,11 @@ export class AppComponent implements OnInit, AfterViewInit {
         if (this.activeConnectionId === id) {
           this.disconnect();
         }
-        await this.loadConnections();
+        this.connections = this.connections.filter(c => c.id !== id);
+        this.showToast('Conexión eliminada', 'info');
       } catch(err) {
         console.error('Error:', err);
+        this.showToast('Error al eliminar la conexión', 'error');
       }
     }
   }
@@ -154,25 +175,26 @@ export class AppComponent implements OnInit, AfterViewInit {
     if (!conn.id) return;
     this.activeConnectionId = conn.id;
     this.showForm = false;
-    
-    // Inicializar o reiniciar xterm
+    this.showToast(`Conectando a ${conn.name}...`, 'info', 2000);
     this.setupTerminal();
-
     try {
       await this.ipc.invoke('start-ssh', conn.id);
+      this.showToast(`Conectado a ${conn.name}`, 'success');
     } catch (err) {
       console.error('Error connecting:', err);
-      alert('No se pudo iniciar la conexión: ' + err);
+      this.showToast(`No se pudo conectar a ${conn.name}`, 'error');
       this.disconnect();
     }
   }
 
   disconnect() {
+    const name = this.getActiveConnectionName();
     this.activeConnectionId = null;
     if (this.terminal) {
       this.terminal.dispose();
       this.terminal = null;
     }
+    if (name) this.showToast(`Conexión cerrada: ${name}`, 'info');
   }
 
   private setupTerminal() {
@@ -220,12 +242,12 @@ export class AppComponent implements OnInit, AfterViewInit {
     if (conn.password) {
       try {
         await navigator.clipboard.writeText(conn.password);
-        alert('Clave copiada al portapapeles.');
+        this.showToast('Contraseña copiada al portapapeles', 'success');
       } catch (err) {
-        console.error('Error al copiar:', err);
+        this.showToast('Error al copiar la contraseña', 'error');
       }
     } else {
-      alert('Esta conexión no tiene contraseña o usa llave SSH.');
+      this.showToast('Esta conexión no tiene contraseña o usa llave SSH', 'info');
     }
   }
 }
