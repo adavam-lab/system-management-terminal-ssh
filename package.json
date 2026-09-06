@@ -1,0 +1,56 @@
+{
+  "name": "ssh-manager",
+  "version": "0.0.0",
+  "description": "Aplicación para administrar conexiones SSH",
+  "author": "Usuario",
+  "main": "main.js",
+  "scripts": {
+    "ng": "ng",
+    "start": "concurrently \"ng serve\" \"wait-on http://localhost:4200 && electron .\"",
+    "build": "ng build",
+    "electron:build": "ng build && electron-builder",
+    "watch": "ng build --watch --configuration development",
+    "test": "ng test"
+  },
+  "private": true,
+  "packageManager": "npm@11.12.1",
+  "build": {
+    "appId": "com.ssh-manager.app",
+    "productName": "SSH Manager",
+    "win": {
+      "icon": "public/logo-single.png"
+    }
+  },
+  "dependencies": {
+    "@angular/common": "^22.1.0",
+    "@angular/compiler": "^22.1.0",
+    "@angular/core": "^22.1.0",
+    "@angular/forms": "^22.1.0",
+    "@angular/platform-browser": "^22.1.0",
+    "@angular/router": "^22.1.0",
+    "@types/better-sqlite3": "^9.6.0",
+    "@xterm/addon-fit": "^0.11.0",
+    "@xterm/xterm": "^6.0.0",
+    "bcryptjs": "^3.0.3",
+    "better-sqlite3": "^13.0.3",
+    "node-pty": "^1.1.0",
+    "rxjs": "~7.8.0",
+    "tslib": "^2.3.0"
+  },
+  "devDependencies": {
+    "@angular/build": "^22.1.7",
+    "@angular/cli": "^22.1.7",
+    "@angular/compiler-cli": "^22.1.0",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^26.4.1",
+    "concurrently": "^10.0.5",
+    "electron": "^44.2.0",
+    "electron-builder": "^26.15.3",
+    "electron-rebuild": "^3.2.9",
+    "jsdom": "^28.0.0",
+    "prettier": "^3.8.1",
+    "typescript": "~6.0.2",
+    "vitest": "^4.0.8",
+    "wait-on": "^9.1.0"
+  }
+}

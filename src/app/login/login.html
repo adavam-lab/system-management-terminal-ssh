@@ -1,0 +1,113 @@
+<div class="auth-wrapper">
+  <div class="auth-card">
+
+    <!-- Logo -->
+    <div class="auth-logo">
+      <img src="logo.png" alt="SSH Manager" />
+    </div>
+
+    <!-- Título dinámico según modo -->
+    <div class="auth-title">
+      <h2>{{ hasUsers ? 'Iniciar Sesión' : 'Crear Cuenta' }}</h2>
+      <p>{{ hasUsers ? 'Ingresa tus credenciales para continuar' : 'Registra el primer usuario del sistema' }}</p>
+    </div>
+
+    <!-- Mensaje de alerta / éxito -->
+    <div *ngIf="errorMsg" class="alert alert-error">⚠ {{ errorMsg }}</div>
+    <div *ngIf="successMsg" class="alert alert-success">✔ {{ successMsg }}</div>
+
+    <!-- LOGIN FORM -->
+    <form *ngIf="mode === 'login'" (ngSubmit)="onLogin()" class="auth-form">
+      <div class="form-group">
+        <label>Usuario</label>
+        <div class="input-wrapper">
+          <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+          </svg>
+          <input type="text" [(ngModel)]="loginForm.username" name="username"
+                 placeholder="Ingresa tu usuario" autocomplete="username" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Contraseña</label>
+        <div class="input-wrapper">
+          <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+          </svg>
+          <input type="password" [(ngModel)]="loginForm.password" name="password"
+                 placeholder="••••••••" autocomplete="current-password" />
+        </div>
+      </div>
+      <button type="submit" class="btn-auth" [disabled]="loading">
+        <span *ngIf="!loading">Entrar</span>
+        <span *ngIf="loading" class="spinner-sm"></span>
+      </button>
+    </form>
+
+    <!-- REGISTER FORM -->
+    <form *ngIf="mode === 'register'" (ngSubmit)="onRegister()" class="auth-form">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Nombre</label>
+          <div class="input-wrapper">
+            <input type="text" [(ngModel)]="registerForm.name" name="name" placeholder="Nombre" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Apellido</label>
+          <div class="input-wrapper">
+            <input type="text" [(ngModel)]="registerForm.lastname" name="lastname" placeholder="Apellido" />
+          </div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Usuario</label>
+        <div class="input-wrapper">
+          <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+          </svg>
+          <input type="text" [(ngModel)]="registerForm.username" name="username" placeholder="Nombre de usuario" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Correo Electrónico</label>
+        <div class="input-wrapper">
+          <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none">
+            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+            <polyline points="22,6 12,13 2,6"></polyline>
+          </svg>
+          <input type="email" [(ngModel)]="registerForm.email" name="email" placeholder="correo@ejemplo.com" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Contraseña</label>
+        <div class="input-wrapper">
+          <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+          </svg>
+          <input type="password" [(ngModel)]="registerForm.password" name="password" placeholder="Mínimo 8 caracteres" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Confirmar Contraseña</label>
+        <div class="input-wrapper">
+          <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+          </svg>
+          <input type="password" [(ngModel)]="registerForm.confirmPassword" name="confirmPassword" placeholder="Repite la contraseña" />
+        </div>
+      </div>
+      <button type="submit" class="btn-auth" [disabled]="loading">
+        <span *ngIf="!loading">Crear Cuenta</span>
+        <span *ngIf="loading" class="spinner-sm"></span>
+      </button>
+    </form>
+
+    <p class="auth-footer">SSH Manager · ADAVAM</p>
+  </div>
+</div>
