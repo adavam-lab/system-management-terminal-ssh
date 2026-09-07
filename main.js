@@ -27,7 +27,7 @@ function createWindow() {
   win.setMenu(null);
 
   // Serve Angular from localhost in dev, or local files in prod
-  const isDev = process.env.NODE_ENV !== 'production';
+  const isDev = !app.isPackaged;
 
   if (isDev) {
     win.loadURL('http://localhost:4200');

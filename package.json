@@ -1,8 +1,8 @@
 {
   "name": "ssh-manager",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Aplicación para administrar conexiones SSH",
-  "author": "Usuario",
+  "author": "E. Daniel Valencia - ADAVAM",
   "main": "main.js",
   "scripts": {
     "ng": "ng",
@@ -19,7 +19,11 @@
     "productName": "SSH Manager",
     "win": {
       "icon": "public/logo-single.png"
-    }
+    },
+    "files": [
+      "**/*",
+      "dist/ssh-manager/**/*"
+    ]
   },
   "dependencies": {
     "@angular/common": "^22.1.0",
