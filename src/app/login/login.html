@@ -1,4 +1,16 @@
 <div class="auth-wrapper">
+  <div class="tech-background">
+    <span>&#123; Node.js &#125;</span>
+    <span>&lt;React /&gt;</span>
+    <span>[ Angular ]</span>
+    <span>nest()</span>
+    <span>.NET</span>
+    <span>import python</span>
+    <span>SELECT * FROM postgres</span>
+    <span>git push</span>
+    <span>docker build</span>
+    <span>CI/CD</span>
+  </div>
   <div class="auth-card">
 
     <!-- Logo -->
@@ -100,6 +112,16 @@
             <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
           </svg>
           <input type="password" [(ngModel)]="registerForm.confirmPassword" name="confirmPassword" placeholder="Repite la contraseña" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label>PIN de Recuperación</label>
+        <div class="input-wrapper">
+          <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+          </svg>
+          <input type="password" [(ngModel)]="registerForm.recoveryPin" name="recoveryPin" placeholder="6 dígitos numéricos (ej. 123456)" maxlength="6" />
         </div>
       </div>
       <button type="submit" class="btn-auth" [disabled]="loading">

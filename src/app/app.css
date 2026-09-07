@@ -438,9 +438,9 @@ input:focus, select:focus {
 
 .terminal-container {
   flex: 1;
-  padding: 10px;
   background-color: #1e1e1e;
   overflow: hidden;
+  position: relative;
 }
 
 /* ── Toast Notifications ── */
@@ -498,4 +498,120 @@ input:focus, select:focus {
 
 .toast-message {
   line-height: 1.4;
+}
+
+/* Sidebar Footer & Profile Modal */
+.sidebar-footer {
+  margin-top: auto;
+  padding: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.user-profile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 8px;
+  transition: background 0.2s;
+  flex: 1;
+}
+
+.user-profile:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.user-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #00a8ff, #0056b3);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 14px;
+}
+
+.user-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.user-info .username {
+  font-size: 13px;
+  font-weight: 600;
+  color: #e6edf3;
+}
+
+.user-info .role {
+  font-size: 11px;
+  color: #8b949e;
+}
+
+.profile-modal {
+  max-width: 400px;
+  text-align: center;
+}
+
+.profile-avatar-large {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #00a8ff, #0056b3);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 32px;
+  margin: 0 auto 16px;
+  box-shadow: 0 4px 12px rgba(0, 168, 255, 0.3);
+}
+
+.profile-details h3 {
+  margin: 0 0 4px;
+  font-size: 20px;
+  color: #e6edf3;
+}
+
+.profile-username {
+  color: #8b949e;
+  margin: 0 0 24px;
+  font-size: 14px;
+}
+
+.profile-info-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 16px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.info-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.info-label {
+  font-size: 12px;
+  color: #8b949e;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.info-value {
+  font-size: 14px;
+  color: #e6edf3;
+  font-weight: 500;
 }

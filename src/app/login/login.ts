@@ -22,12 +22,13 @@ export class LoginComponent implements OnInit {
   loginForm = { username: '', password: '' };
 
   registerForm = {
-    username: '',
     name: '',
     lastname: '',
+    username: '',
     email: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    recoveryPin: ''
   };
 
   constructor(private ipc: IpcService, private zone: NgZone) {}
@@ -80,6 +81,11 @@ export class LoginComponent implements OnInit {
       return;
     }
 
+    if (!this.registerForm.recoveryPin || !/^\d{6}$/.test(this.registerForm.recoveryPin)) {
+      this.errorMsg = 'El PIN de recuperación debe ser de 6 dígitos numéricos.';
+      return;
+    }
+
     if (this.registerForm.password.length < 8) {
       this.errorMsg = 'La contraseña debe tener al menos 8 caracteres.';
       return;
@@ -92,13 +98,14 @@ export class LoginComponent implements OnInit {
         name: this.registerForm.name,
         lastname: this.registerForm.lastname,
         email: this.registerForm.email,
-        password: this.registerForm.password
+        password: this.registerForm.password,
+        recoveryPin: this.registerForm.recoveryPin
       });
       this.zone.run(() => {
         this.successMsg = '¡Usuario creado exitosamente! Ahora puedes iniciar sesión.';
         this.mode = 'login';
         this.loginForm.username = this.registerForm.username;
-        this.registerForm = { username: '', name: '', lastname: '', email: '', password: '', confirmPassword: '' };
+        this.registerForm = { username: '', name: '', lastname: '', email: '', password: '', confirmPassword: '', recoveryPin: '' };
         this.loading = false;
       });
     } catch (err: any) {

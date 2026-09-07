@@ -30,7 +30,7 @@ function createWindow() {
   const isDev = !app.isPackaged;
 
   if (isDev) {
-    win.loadURL('http://localhost:4200');
+    win.loadURL('http://localhost:4050');
   } else {
     win.loadURL(
       url.format({
@@ -68,9 +68,17 @@ function initDb() {
       name     TEXT NOT NULL,
       lastname TEXT NOT NULL,
       email    TEXT UNIQUE NOT NULL,
-      password TEXT NOT NULL
+      password TEXT NOT NULL,
+      recovery_pin TEXT
     );
   `);
+
+  // Simple migration to add column if it doesn't exist
+  try {
+    db.exec(`ALTER TABLE users ADD COLUMN recovery_pin TEXT;`);
+  } catch (err) {
+    // Column might already exist, ignore
+  }
 }
 
 // --- IPC Handlers: Auth ---
@@ -90,13 +98,21 @@ ipcMain.handle('auth:login', async (event, { username, password }) => {
   return safeUser;
 });
 
-ipcMain.handle('auth:register', async (event, { username, name, lastname, email, password }) => {
+ipcMain.handle('auth:register', async (event, { username, name, lastname, email, password, recoveryPin }) => {
   const existing = db.prepare('SELECT id FROM users WHERE username = ? OR email = ?').get(username, email);
   if (existing) throw new Error('El usuario o email ya está registrado.');
+  
+  if (!recoveryPin || !/^\d{6}$/.test(recoveryPin)) {
+    throw new Error('El PIN de recuperación debe tener exactamente 6 dígitos.');
+  }
+
   const hash = await bcrypt.hash(password, 10);
+  const pinHash = await bcrypt.hash(recoveryPin, 10);
   const id = crypto.randomUUID();
-  db.prepare(`INSERT INTO users (id, username, name, lastname, email, password) VALUES (?, ?, ?, ?, ?, ?)`)
-    .run(id, username, name, lastname, email, hash);
+  
+  db.prepare(`INSERT INTO users (id, username, name, lastname, email, password, recovery_pin) VALUES (?, ?, ?, ?, ?, ?, ?)`)
+    .run(id, username, name, lastname, email, hash, pinHash);
+    
   return { id, username, name, lastname, email };
 });
 
@@ -158,12 +174,20 @@ ipcMain.handle('update-connection', (event, conn) => {
 });
 
 // --- PTY Terminal Management ---
-let ptyProcess = null;
+const ptyProcesses = {};
 
-ipcMain.on('terminal.keystroke', (event, key) => {
-  if (ptyProcess) {
-    ptyProcess.write(key);
+ipcMain.on('terminal.keystroke', (event, { id, key }) => {
+  if (ptyProcesses[id]) {
+    ptyProcesses[id].write(key);
   }
+});
+
+ipcMain.handle('close-ssh', (event, connectionId) => {
+  if (ptyProcesses[connectionId]) {
+    ptyProcesses[connectionId].kill();
+    delete ptyProcesses[connectionId];
+  }
+  return true;
 });
 
 ipcMain.handle('start-ssh', (event, connectionId) => {
@@ -173,24 +197,27 @@ ipcMain.handle('start-ssh', (event, connectionId) => {
 
   const shell = process.platform === 'win32' ? 'powershell.exe' : 'bash';
   
-  if (ptyProcess) {
-    ptyProcess.kill();
+  // If already active, do nothing
+  if (ptyProcesses[connectionId]) {
+    return true;
   }
 
-  ptyProcess = pty.spawn(shell, [], {
+  const ptyProcess = pty.spawn(shell, [], {
     name: 'xterm-color',
     cols: 80,
     rows: 30,
     cwd: process.env.HOME,
     env: process.env
   });
+  
+  ptyProcesses[connectionId] = ptyProcess;
 
   let passwordSent = false;
   let fingerprintAccepted = false;
 
   ptyProcess.onData((data) => {
     if (win) {
-      win.webContents.send('terminal.incomingData', data);
+      win.webContents.send('terminal.incomingData', { id: connectionId, data });
     }
     
     const output = data.toLowerCase();
@@ -208,6 +235,13 @@ ipcMain.handle('start-ssh', (event, connectionId) => {
         passwordSent = true;
       }
     }
+  });
+
+  ptyProcess.onExit(() => {
+    if (win) {
+      win.webContents.send('terminal.exit', { id: connectionId });
+    }
+    delete ptyProcesses[connectionId];
   });
 
   // Automatically start ssh command

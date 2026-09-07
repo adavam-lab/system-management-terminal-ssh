@@ -6,7 +6,7 @@
   "main": "main.js",
   "scripts": {
     "ng": "ng",
-    "start": "concurrently \"ng serve\" \"wait-on http://localhost:4200 && electron .\"",
+    "start": "concurrently \"ng serve --port 4050\" \"wait-on http://localhost:4050 && electron .\"",
     "build": "ng build",
     "electron:build": "ng build && electron-builder",
     "watch": "ng build --watch --configuration development",

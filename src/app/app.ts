@@ -31,6 +31,7 @@ export class AppComponent implements OnInit, AfterViewInit {
   activeConnectionId: string | null = null;
   showForm = false;
   isEditing = false;
+  showProfileModal = false;
   
   newConnection: Connection = {
     name: '',
@@ -52,9 +53,8 @@ export class AppComponent implements OnInit, AfterViewInit {
     }, duration);
   }
 
-  terminal: Terminal | null = null;
-  fitAddon: FitAddon | null = null;
-  @ViewChild('terminalContainer') terminalContainer!: ElementRef;
+  activeTerminals: { [id: string]: { term: Terminal, fit: FitAddon } } = {};
+  activeSessions: string[] = [];
 
   constructor(private ipc: IpcService) {}
 
@@ -69,22 +69,31 @@ export class AppComponent implements OnInit, AfterViewInit {
     this.isLoggedIn = false;
     this.currentUser = null;
     this.connections = [];
-    this.activeConnectionId = null;
-    this.showForm = false;
-    if (this.terminal) {
-      this.terminal.dispose();
-      this.terminal = null;
+    if (this.activeConnectionId) {
+      this.disconnect(this.activeConnectionId);
     }
+    this.activeSessions.forEach(id => this.disconnect(id));
+    this.activeSessions = [];
+    this.activeConnectionId = null;
   }
 
   ngOnInit(): void {
     this.loadConnections();
     
     // Escuchar datos entrantes de SSH
-    this.ipc.on('terminal.incomingData').subscribe(data => {
-      if (this.terminal) {
-        this.terminal.write(data);
+    this.ipc.on('terminal.incomingData').subscribe(payload => {
+      const { id, data } = payload;
+      if (this.activeTerminals[id]) {
+        this.activeTerminals[id].term.write(data);
       }
+    });
+
+    // Detectar cuando el proceso de terminal muere / se cierra
+    this.ipc.on('terminal.exit').subscribe(payload => {
+      const { id } = payload;
+      const name = this.getActiveConnectionName(id);
+      this.showToast(`Conexión SSH terminada: ${name || id}`, 'info');
+      this.disconnect(id, true);
     });
   }
 
@@ -130,7 +139,11 @@ export class AppComponent implements OnInit, AfterViewInit {
     this.showForm = false;
   }
 
+  isSaving = false;
+
   async saveConnection() {
+    if (this.isSaving) return;
+    this.isSaving = true;
     console.log('[saveConnection] isEditing:', this.isEditing, '| id:', this.newConnection.id);
     try {
       if (this.isEditing && this.newConnection.id) {
@@ -151,6 +164,8 @@ export class AppComponent implements OnInit, AfterViewInit {
     } catch (err) {
       console.error('Error saving connection:', err);
       this.showToast('Error al guardar la conexión', 'error');
+    } finally {
+      this.isSaving = false;
     }
   }
 
@@ -173,67 +188,138 @@ export class AppComponent implements OnInit, AfterViewInit {
   async connect(conn: Connection, event?: Event) {
     if (event) event.stopPropagation();
     if (!conn.id) return;
-    this.activeConnectionId = conn.id;
+    
     this.showForm = false;
+    this.activeConnectionId = conn.id;
+    const currentId = conn.id;
+
+    if (this.activeSessions.includes(currentId)) {
+      // Ya está abierta, solo cambiamos a ella y ajustamos tamaño
+      setTimeout(() => {
+        if (this.activeTerminals[currentId]) {
+          this.activeTerminals[currentId].fit.fit();
+          this.activeTerminals[currentId].term.focus();
+        }
+      }, 50);
+      return;
+    }
+
+    this.activeSessions.push(conn.id);
     this.showToast(`Conectando a ${conn.name}...`, 'info', 2000);
-    this.setupTerminal();
+    this.setupTerminal(conn.id);
     try {
       await this.ipc.invoke('start-ssh', conn.id);
       this.showToast(`Conectado a ${conn.name}`, 'success');
     } catch (err) {
       console.error('Error connecting:', err);
       this.showToast(`No se pudo conectar a ${conn.name}`, 'error');
-      this.disconnect();
+      this.disconnect(conn.id);
     }
   }
 
-  disconnect() {
-    const name = this.getActiveConnectionName();
-    this.activeConnectionId = null;
-    if (this.terminal) {
-      this.terminal.dispose();
-      this.terminal = null;
+  disconnect(connectionId?: string, isFromBackend: boolean = false) {
+    const idToClose = connectionId || this.activeConnectionId;
+    if (!idToClose) return;
+
+    const name = this.getActiveConnectionName(idToClose);
+    
+    // Matar el proceso en backend solo si la orden viene del frontend
+    if (!isFromBackend) {
+      this.ipc.invoke('close-ssh', idToClose).catch(() => {});
     }
+
+    if (this.activeTerminals[idToClose]) {
+      this.activeTerminals[idToClose].term.dispose();
+      delete this.activeTerminals[idToClose];
+    }
+    
+    this.activeSessions = this.activeSessions.filter(id => id !== idToClose);
+    
+    if (this.activeConnectionId === idToClose) {
+      this.activeConnectionId = this.activeSessions.length > 0 ? this.activeSessions[this.activeSessions.length - 1] : null;
+    }
+    
     if (name) this.showToast(`Conexión cerrada: ${name}`, 'info');
   }
 
-  private setupTerminal() {
-    if (this.terminal) {
-      this.terminal.dispose();
-    }
-    
+  private setupTerminal(connectionId: string) {
     setTimeout(() => {
-      if (!this.terminalContainer) return;
+      const container = document.getElementById('term-' + connectionId);
+      if (!container) return;
       
-      this.terminal = new Terminal({
+      const terminal = new Terminal({
         cursorBlink: true,
+        scrollback: 10000,
         theme: {
           background: '#0d1117',
           foreground: '#c9d1d9'
         }
       });
       
-      this.fitAddon = new FitAddon();
-      this.terminal.loadAddon(this.fitAddon);
+      const fitAddon = new FitAddon();
+      terminal.loadAddon(fitAddon);
       
-      this.terminal.open(this.terminalContainer.nativeElement);
-      this.fitAddon.fit();
+      terminal.open(container);
+      fitAddon.fit();
       
-      this.terminal.onData(data => {
-        this.ipc.send('terminal.keystroke', data);
+      this.activeTerminals[connectionId] = { term: terminal, fit: fitAddon };
+
+      terminal.onData(data => {
+        this.ipc.send('terminal.keystroke', { id: connectionId, key: data });
       });
 
-      window.addEventListener('resize', () => {
-        if (this.fitAddon) {
-          this.fitAddon.fit();
+      // 1. Copiar automáticamente al seleccionar texto
+      terminal.onSelectionChange(() => {
+        if (terminal.hasSelection()) {
+          navigator.clipboard.writeText(terminal.getSelection());
         }
       });
-    }, 100); // Darle tiempo a la vista para renderizar el div
+
+      // 2. Pegar con clic derecho
+      container.addEventListener('contextmenu', async (e: MouseEvent) => {
+        e.preventDefault();
+        try {
+          const text = await navigator.clipboard.readText();
+          if (text) {
+             this.ipc.send('terminal.keystroke', { id: connectionId, key: text });
+          }
+        } catch (err) {
+          console.error('Error pasting with right click:', err);
+        }
+      });
+
+      // 3. Atajos de teclado: Ctrl+Shift+C (Copiar) y Ctrl+Shift+V (Pegar)
+      terminal.attachCustomKeyEventHandler((e: KeyboardEvent) => {
+        if (e.ctrlKey && e.shiftKey && e.type === 'keydown') {
+          if (e.key.toLowerCase() === 'c' && terminal.hasSelection()) {
+            navigator.clipboard.writeText(terminal.getSelection());
+            return false;
+          }
+          if (e.key.toLowerCase() === 'v') {
+            navigator.clipboard.readText().then(text => {
+              if (text) this.ipc.send('terminal.keystroke', { id: connectionId, key: text });
+            });
+            return false;
+          }
+        }
+        return true;
+      });
+
+      // Asegurarse de que el fit se redimensione con la ventana
+      window.addEventListener('resize', () => {
+        if (this.activeConnectionId === connectionId) {
+          fitAddon.fit();
+        }
+      });
+      
+      terminal.focus();
+    }, 100);
   }
 
-  getActiveConnectionName(): string {
-    if (!this.activeConnectionId) return '';
-    const conn = this.connections.find(c => c.id === this.activeConnectionId);
+  getActiveConnectionName(connectionId?: string): string {
+    const id = connectionId || this.activeConnectionId;
+    if (!id) return '';
+    const conn = this.connections.find(c => c.id === id);
     return conn ? conn.name : '';
   }
 

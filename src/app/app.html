@@ -12,13 +12,6 @@
       <h2>Conexiones SSH</h2>
       <div class="sidebar-header-actions">
         <button (click)="openForm()" class="btn-primary" title="Nueva conexión">+</button>
-        <button (click)="logout()" class="btn-logout" title="Cerrar sesión">
-          <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-            <polyline points="16 17 21 12 16 7"></polyline>
-            <line x1="21" y1="12" x2="9" y2="12"></line>
-          </svg>
-        </button>
       </div>
     </div>
     <ul class="connection-list">
@@ -58,6 +51,26 @@
         No hay conexiones guardadas.
       </li>
     </ul>
+
+    <!-- Footer Sidebar con Perfil y Logout -->
+    <div class="sidebar-footer">
+      <div class="user-profile" (click)="showProfileModal = true">
+        <div class="user-avatar">
+          {{ currentUser?.username?.charAt(0)?.toUpperCase() || 'U' }}
+        </div>
+        <div class="user-info">
+          <span class="username">{{ currentUser?.username }}</span>
+          <span class="role">Admin</span>
+        </div>
+      </div>
+      <button (click)="logout()" class="btn-logout" title="Cerrar sesión">
+        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+          <polyline points="16 17 21 12 16 7"></polyline>
+          <line x1="21" y1="12" x2="9" y2="12"></line>
+        </svg>
+      </button>
+    </div>
   </aside>
 
   <main class="main-content">
@@ -105,11 +118,47 @@
     <div [style.display]="activeConnectionId ? 'flex' : 'none'" class="terminal-wrapper">
       <div class="terminal-header">
         <span>Terminal Activa: {{ getActiveConnectionName() }}</span>
-        <button (click)="disconnect()" class="btn-danger btn-sm" (mouseup)="$any($event.target).blur()">⬛ Cerrar Conexión</button>
+        <button (click)="disconnect(undefined, false)" class="btn-danger btn-sm" (mouseup)="$any($event.target).blur()">⬛ Cerrar Conexión</button>
       </div>
-      <div #terminalContainer class="terminal-container"></div>
+      <!-- Contenedores de Terminales -->
+      <ng-container *ngFor="let sessionId of activeSessions">
+        <div [id]="'term-' + sessionId" 
+             [hidden]="sessionId !== activeConnectionId" 
+             class="terminal-container">
+        </div>
+      </ng-container>
     </div>
   </main>
+
+  <!-- Modal de Perfil de Usuario -->
+  <div class="modal-overlay" *ngIf="showProfileModal" (click)="showProfileModal = false">
+    <div class="modal-content profile-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>Mi Perfil</h2>
+        <button class="btn-close" (click)="showProfileModal = false">×</button>
+      </div>
+      <div class="profile-details">
+        <div class="profile-avatar-large">
+          {{ currentUser?.username?.charAt(0)?.toUpperCase() || 'U' }}
+        </div>
+        <h3>{{ currentUser?.name }} {{ currentUser?.lastname }}</h3>
+        <p class="profile-username">@{{ currentUser?.username }}</p>
+        <div class="profile-info-grid">
+          <div class="info-item">
+            <span class="info-label">Email</span>
+            <span class="info-value">{{ currentUser?.email }}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Rol</span>
+            <span class="info-value">Administrador</span>
+          </div>
+        </div>
+      </div>
+      <div class="modal-actions" style="margin-top: 20px;">
+        <button class="btn-secondary" (click)="showProfileModal = false">Cerrar</button>
+      </div>
+    </div>
+  </div>
 
   <!-- Formulario Modal -->
   <div class="modal-overlay" *ngIf="showForm">
