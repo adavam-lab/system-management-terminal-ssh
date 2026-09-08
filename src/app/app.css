@@ -19,18 +19,26 @@
 }
 
 .sidebar-logo {
-  padding: 20px 15px 12px;
+  padding: 20px 15px;
   display: flex;
   justify-content: center;
   align-items: center;
+  gap: 10px;
   border-bottom: 1px solid #2a2a2a;
 }
 
 .sidebar-logo-img {
-  max-width: 100%;
-  max-height: 80px;
+  max-width: 40px;
+  max-height: 40px;
   object-fit: contain;
   filter: drop-shadow(0 0 8px rgba(0, 168, 255, 0.2));
+}
+
+.sidebar-logo-text {
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: #e0e0e0;
+  white-space: nowrap;
 }
 
 .sidebar-header {

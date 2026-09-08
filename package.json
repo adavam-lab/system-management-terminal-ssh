@@ -1,8 +1,9 @@
 {
   "name": "ssh-manager",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Aplicación para administrar conexiones SSH",
   "author": "E. Daniel Valencia - ADAVAM",
+  "homepage": "https://www.adavam.com",
   "main": "main.js",
   "scripts": {
     "ng": "ng",
@@ -17,8 +18,23 @@
   "build": {
     "appId": "com.ssh-manager.app",
     "productName": "SSH Manager",
+    "copyright": "Copyright © ADAVAM",
     "win": {
       "icon": "public/logo-single.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "allowElevation": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "menuCategory": "ADAVAM",
+      "shortcutName": "SSH Manager",
+      "license": "build/license.txt",
+      "include": "build/installer.nsh",
+      "artifactName": "${productName}-Setup-${version}.${ext}",
+      "uninstallDisplayName": "${productName} ${version}"
     },
     "files": [
       "**/*",

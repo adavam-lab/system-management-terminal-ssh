@@ -1,0 +1,22 @@
+SSH MANAGER - CONDICIONES DE USO
+=================================
+
+SSH Manager es un producto desarrollado por ADAVAM (E. Daniel Valencia)
+para la administración de conexiones SSH.
+
+Al continuar con la instalación, usted acepta utilizar esta aplicación
+bajo su propia responsabilidad, respetando las políticas de seguridad
+de su organización.
+
+---------------------------------------------------------------
+Sobre ADAVAM
+---------------------------------------------------------------
+ADAVAM desarrolla herramientas de administración y productividad
+para profesionales de sistemas.
+
+Descubra más productos, soporte y novedades en:
+https://www.adavam.com
+
+---------------------------------------------------------------
+
+Haga clic en "Acepto" para continuar con la instalación de SSH Manager.
