@@ -189,6 +189,7 @@
   background-color: #0d1117;
   position: relative;
   overflow: hidden;
+  height: 100vh;
 }
 
 /* Modal Styles */
@@ -334,7 +335,6 @@ input:focus, select:focus {
 }
 
 .conn-card:hover {
-  border-color: #58a6ff;
   background-color: #1f242c;
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
@@ -423,6 +423,7 @@ input:focus, select:focus {
   flex-direction: column;
   flex: 1;
   width: 100%;
+  height: 100%;
   overflow: hidden;
 }
 
@@ -441,6 +442,15 @@ input:focus, select:focus {
   background-color: #1e1e1e;
   overflow: hidden;
   position: relative;
+  height: 100%;
+  width: 100%;
+  min-height: 0;
+}
+
+.terminal-container .xterm {
+  height: 100%;
+  width: 100%;
+  padding: 4px;
 }
 
 /* ── Toast Notifications ── */

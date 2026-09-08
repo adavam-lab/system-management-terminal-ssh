@@ -190,24 +190,25 @@ ipcMain.handle('close-ssh', (event, connectionId) => {
   return true;
 });
 
-ipcMain.handle('start-ssh', (event, connectionId) => {
-  const stmt = db.prepare('SELECT * FROM connections WHERE id = ?');
-  const conn = stmt.get(connectionId);
-  if (!conn) throw new Error('Connection not found');
+ipcMain.handle('start-ssh', async (event, { connectionId, cols = 80, rows = 30 }) => {
+  const conn = db.prepare('SELECT * FROM connections WHERE id = ?').get(connectionId);
+  if (!conn) throw new Error('Conexión no encontrada');
 
-  const shell = process.platform === 'win32' ? 'powershell.exe' : 'bash';
-  
   // If already active, do nothing
   if (ptyProcesses[connectionId]) {
     return true;
   }
 
+  // Determine shell based on OS
+  const shell = process.platform === 'win32' ? 'powershell.exe' : 'bash';
+
   const ptyProcess = pty.spawn(shell, [], {
     name: 'xterm-color',
-    cols: 80,
-    rows: 30,
-    cwd: process.env.HOME,
-    env: process.env
+    cols: cols,
+    rows: rows,
+    cwd: process.env.HOME || process.env.USERPROFILE,
+    env: process.env,
+    useConpty: false
   });
   
   ptyProcesses[connectionId] = ptyProcess;

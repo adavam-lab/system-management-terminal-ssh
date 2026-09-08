@@ -165,8 +165,7 @@
     <div class="modal-content form-container">
       <h3>{{ isEditing ? 'Editar Conexión' : 'Nueva Conexión' }}</h3>
       <form (ngSubmit)="saveConnection()" #connForm="ngForm">
-        <!-- Campo oculto para preservar el id al editar -->
-        <input type="hidden" [(ngModel)]="newConnection.id" name="id">
+        <!-- No se necesita campo oculto para el id, ya está en this.newConnection -->
         <div class="form-group">
           <label>Nombre del Perfil</label>
           <input type="text" [(ngModel)]="newConnection.name" name="name" required>
@@ -207,7 +206,7 @@
 
         <div class="form-actions">
           <button type="button" (click)="cancelForm()" class="btn-secondary">Cancelar</button>
-          <button type="submit" [disabled]="!connForm.valid" class="btn-primary">Guardar</button>
+          <button type="submit" [disabled]="!connForm.valid" class="btn-primary">{{ isEditing ? 'Actualizar' : 'Guardar' }}</button>
         </div>
       </form>
     </div>

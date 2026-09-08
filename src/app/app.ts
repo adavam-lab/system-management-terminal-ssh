@@ -146,7 +146,10 @@ export class AppComponent implements OnInit, AfterViewInit {
     this.isSaving = true;
     console.log('[saveConnection] isEditing:', this.isEditing, '| id:', this.newConnection.id);
     try {
-      if (this.isEditing && this.newConnection.id) {
+      if (this.isEditing) {
+        if (!this.newConnection.id) {
+          throw new Error('No se encontró el ID de la conexión a editar.');
+        }
         await this.ipc.invoke('update-connection', this.newConnection);
         const idx = this.connections.findIndex(c => c.id === this.newConnection.id);
         if (idx !== -1) {
@@ -204,16 +207,22 @@ export class AppComponent implements OnInit, AfterViewInit {
       return;
     }
 
-    this.activeSessions.push(conn.id);
+    this.activeSessions.push(currentId);
     this.showToast(`Conectando a ${conn.name}...`, 'info', 2000);
-    this.setupTerminal(conn.id);
+    
+    await this.setupTerminal(currentId);
+    
+    const termInfo = this.activeTerminals[currentId];
+    const cols = termInfo ? termInfo.term.cols : 80;
+    const rows = termInfo ? termInfo.term.rows : 30;
+
     try {
-      await this.ipc.invoke('start-ssh', conn.id);
+      await this.ipc.invoke('start-ssh', { connectionId: currentId, cols, rows });
       this.showToast(`Conectado a ${conn.name}`, 'success');
     } catch (err) {
       console.error('Error connecting:', err);
       this.showToast(`No se pudo conectar a ${conn.name}`, 'error');
-      this.disconnect(conn.id);
+      this.disconnect(currentId);
     }
   }
 
@@ -242,12 +251,16 @@ export class AppComponent implements OnInit, AfterViewInit {
     if (name) this.showToast(`Conexión cerrada: ${name}`, 'info');
   }
 
-  private setupTerminal(connectionId: string) {
-    setTimeout(() => {
-      const container = document.getElementById('term-' + connectionId);
-      if (!container) return;
-      
-      const terminal = new Terminal({
+  private setupTerminal(connectionId: string): Promise<void> {
+    return new Promise(resolve => {
+      setTimeout(() => {
+        const container = document.getElementById('term-' + connectionId);
+        if (!container) {
+          resolve();
+          return;
+        }
+        
+        const terminal = new Terminal({
         cursorBlink: true,
         scrollback: 10000,
         theme: {
@@ -305,6 +318,11 @@ export class AppComponent implements OnInit, AfterViewInit {
         return true;
       });
 
+      // Enviar nueva resolución al backend cuando se redimensione xterm
+      terminal.onResize(size => {
+        this.ipc.send('terminal.resize', { id: connectionId, cols: size.cols, rows: size.rows });
+      });
+
       // Asegurarse de que el fit se redimensione con la ventana
       window.addEventListener('resize', () => {
         if (this.activeConnectionId === connectionId) {
@@ -313,8 +331,10 @@ export class AppComponent implements OnInit, AfterViewInit {
       });
       
       terminal.focus();
+      resolve();
     }, 100);
-  }
+  });
+}
 
   getActiveConnectionName(connectionId?: string): string {
     const id = connectionId || this.activeConnectionId;

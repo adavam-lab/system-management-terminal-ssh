@@ -209,6 +209,18 @@ dist/ssh-manager Setup 0.0.0.exe
 
 ---
 
+## 🛠️ Solución de Problemas Frecuentes
+
+### Error `AttachConsole failed` al abrir terminal (Windows)
+En entornos Electron bajo Windows, `node-pty` puede fallar al intentar usar la nueva API de ConPTY porque la aplicación carece de una consola nativa visible. 
+**Solución (Ya aplicada):** Se configuró `useConpty: false` en la creación del proceso PTY (`main.js`) para usar el backend alternativo `winpty`.
+
+### Demora al guardar, editar o eliminar conexiones
+Dado que Electron se comunica por IPC, las operaciones asíncronas caen fuera del _Zone_ de Angular. Esto causaba que la UI no se actualizara inmediatamente.
+**Solución (Ya aplicada):** El servicio `IpcService` envuelve las resoluciones de promesas dentro de `this.zone.run()` forzando a Angular a detectar cambios al instante.
+
+---
+
 ## 📄 Licencia
 
 MIT — ADAVAM © 2026

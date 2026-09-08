@@ -21,7 +21,11 @@ export class IpcService {
     if (!this.ipcRenderer) {
       return Promise.reject('Not running in Electron');
     }
-    return this.ipcRenderer.invoke(channel, ...args);
+    return this.ipcRenderer.invoke(channel, ...args).then((result: any) => {
+      return new Promise((resolve) => {
+        this.zone.run(() => resolve(result));
+      });
+    });
   }
 
   public send(channel: string, ...args: any[]): void {
