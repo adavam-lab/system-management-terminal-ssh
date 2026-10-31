@@ -20,8 +20,8 @@
 
     <!-- Título dinámico según modo -->
     <div class="auth-title">
-      <h2>{{ hasUsers ? 'Iniciar Sesión' : 'Crear Cuenta' }}</h2>
-      <p>{{ hasUsers ? 'Ingresa tus credenciales para continuar' : 'Registra el primer usuario del sistema' }}</p>
+      <h2>{{ titleText }}</h2>
+      <p>{{ subtitleText }}</p>
     </div>
 
     <!-- Mensaje de alerta / éxito -->
@@ -55,6 +55,63 @@
       <button type="submit" class="btn-auth" [disabled]="loading">
         <span *ngIf="!loading">Entrar</span>
         <span *ngIf="loading" class="spinner-sm"></span>
+      </button>
+      <button type="button" class="link-btn" (click)="switchMode('recover')">
+        ¿Olvidaste tu contraseña? Recupérala con tu PIN
+      </button>
+    </form>
+
+    <!-- RECOVER FORM -->
+    <form *ngIf="mode === 'recover'" (ngSubmit)="onRecover()" class="auth-form">
+      <div class="form-group">
+        <label>Usuario</label>
+        <div class="input-wrapper">
+          <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+          </svg>
+          <input type="text" [(ngModel)]="recoverForm.username" name="username"
+                 placeholder="Ingresa tu usuario" autocomplete="username" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label>PIN de Recuperación</label>
+        <div class="input-wrapper">
+          <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+          </svg>
+          <input type="password" [(ngModel)]="recoverForm.recoveryPin" name="recoveryPin"
+                 placeholder="6 dígitos" maxlength="6" inputmode="numeric" autocomplete="off" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Nueva Contraseña</label>
+        <div class="input-wrapper">
+          <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+          </svg>
+          <input type="password" [(ngModel)]="recoverForm.newPassword" name="newPassword"
+                 placeholder="Mínimo 8 caracteres" autocomplete="new-password" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Confirmar Contraseña</label>
+        <div class="input-wrapper">
+          <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+          </svg>
+          <input type="password" [(ngModel)]="recoverForm.confirmPassword" name="confirmPassword"
+                 placeholder="Repite la contraseña" autocomplete="new-password" />
+        </div>
+      </div>
+      <button type="submit" class="btn-auth" [disabled]="loading">
+        <span *ngIf="!loading">Restablecer Contraseña</span>
+        <span *ngIf="loading" class="spinner-sm"></span>
+      </button>
+      <button type="button" class="link-btn" (click)="switchMode('login')">
+        ← Volver a iniciar sesión
       </button>
     </form>
 

@@ -125,7 +125,7 @@
   margin: 0 0 6px;
   font-size: 20px;
   font-weight: 700;
-  color: #e6edf3;
+  color: #ffffff;
   letter-spacing: -0.3px;
 }
 
@@ -258,6 +258,23 @@
 .btn-auth:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+/* Enlace secundario (recuperar / volver) */
+.link-btn {
+  align-self: center;
+  background: none;
+  border: none;
+  padding: 4px 6px;
+  color: #4da3ff;
+  font-size: 12.5px;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.link-btn:hover {
+  color: #8cc4ff;
+  text-decoration: underline;
 }
 
 /* Footer */

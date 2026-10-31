@@ -8,3 +8,13 @@ html, body {
   overflow: hidden; /* Esto previene el scroll global de la ventana */
   background-color: #121212;
 }
+
+/* Mientras se redimensiona el sidebar: sin animación ni selección de texto */
+body.is-resizing {
+  cursor: col-resize;
+  user-select: none;
+}
+
+body.is-resizing .sidebar {
+  transition: none !important;
+}

@@ -4,78 +4,214 @@
 
 @if (isLoggedIn) {
 <div class="app-container">
-  <aside class="sidebar">
+  <aside class="sidebar" [class.collapsed]="sidebarCollapsed"
+    [style.width.px]="sidebarCollapsed ? 64 : sidebarWidth">
     <div class="sidebar-logo">
       <img src="logo-single.png" alt="Logo" class="sidebar-logo-img" />
-      <span class="sidebar-logo-text">SSH MANAGER</span>
+      <span class="sidebar-logo-text hide-collapsed">SSH MANAGER</span>
+      <button class="sidebar-toggle" (click)="toggleSidebar()"
+        [title]="sidebarCollapsed ? 'Expandir panel' : 'Contraer panel'"
+        [attr.aria-label]="sidebarCollapsed ? 'Expandir panel' : 'Contraer panel'"
+        [attr.aria-expanded]="!sidebarCollapsed">
+        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"
+          stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+          <line x1="9" y1="3" x2="9" y2="21"></line>
+          @if (sidebarCollapsed) { <polyline points="13 9 16 12 13 15"></polyline> }
+          @else { <polyline points="16 9 13 12 16 15"></polyline> }
+        </svg>
+      </button>
     </div>
+
     <div class="sidebar-header">
-      <h2>Conexiones SSH</h2>
+      <h2 class="hide-collapsed">Conexiones</h2>
       <div class="sidebar-header-actions">
-        <button (click)="openForm()" class="btn-primary" title="Nueva conexión">+</button>
+        <button (click)="openProjectForm()" class="btn-icon" title="Nuevo proyecto" aria-label="Nuevo proyecto">
+          <svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" stroke-width="2" fill="none"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+            <line x1="12" y1="11" x2="12" y2="17"></line>
+            <line x1="9" y1="14" x2="15" y2="14"></line>
+          </svg>
+        </button>
+        <button (click)="openForm()" class="btn-primary btn-add" title="Nueva conexión" aria-label="Nueva conexión">
+          <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2.5" fill="none"
+            stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        </button>
       </div>
     </div>
-    <ul class="connection-list">
-      <!-- Botón de Inicio / Dashboard -->
-      <li (click)="goToDashboard()" [class.active]="!activeConnectionId && !showForm" class="nav-item">
-        <div class="conn-info">
-          <span class="conn-name">🏠 Dashboard</span>
-        </div>
-      </li>
 
-      <!-- Lista de Conexiones -->
-      <li *ngFor="let conn of connections" [class.active]="conn.id === activeConnectionId">
-        <div class="conn-info" (click)="connect(conn)">
-          <span class="conn-name">{{ conn.name }}</span>
-          <span class="conn-host">{{ conn.username }}@{{ conn.host }}</span>
-        </div>
-        <div class="conn-actions-sidebar">
-          <button (click)="connect(conn, $event)" title="Conectar">
-            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"
-              stroke-linecap="round" stroke-linejoin="round">
-              <polygon points="5 3 19 12 5 21 5 3"></polygon>
-            </svg>
+    <nav class="tree">
+      <!-- Dashboard -->
+      <div class="tree-row nav-item" [class.active]="isScope('all')" (click)="goToDashboard()" title="Dashboard">
+        <span class="tree-icon">
+          <svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" stroke-width="2" fill="none"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+            <polyline points="9 22 9 12 15 12 15 22"></polyline>
+          </svg>
+        </span>
+        <span class="tree-label">Dashboard</span>
+        <span class="tree-count">{{ connections.length }}</span>
+      </div>
+
+      <!-- Proyectos -->
+      @for (project of projects; track project.id) {
+      <div class="tree-row level-0" [class.active]="isScope('project', project.id)"
+        (click)="showScope({ type: 'project', id: project.id })" [title]="project.name">
+        <button class="tree-chevron" (click)="toggleNode(project.id, $event)"
+          [class.open]="isExpanded(project.id)" aria-label="Expandir proyecto">
+          <svg viewBox="0 0 24 24" width="12" height="12" stroke="currentColor" stroke-width="2.5" fill="none"
+            stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"></polyline></svg>
+        </button>
+        <span class="tree-icon icon-project">
+          <svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" stroke-width="2" fill="none"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+          </svg>
+        </span>
+        <span class="tree-label">{{ project.name }}</span>
+        <span class="tree-count">{{ projectAllConnections(project.id).length }}</span>
+        <div class="tree-actions">
+          <button (click)="openCatalogForm(project.id, undefined, $event)" title="Nuevo catálogo">
+            <svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" stroke-width="2.2" fill="none"
+              stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
           </button>
-          <button (click)="copyPassword(conn, $event)" title="Copiar Clave">
-            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"
+          <button (click)="openProjectForm(project, $event)" title="Editar proyecto">
+            <svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" stroke-width="2" fill="none"
+              stroke-linecap="round" stroke-linejoin="round"><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+          </button>
+          <button (click)="deleteProject(project, $event)" class="delete-icon" title="Eliminar proyecto">
+            <svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" stroke-width="2" fill="none"
+              stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+          </button>
+        </div>
+      </div>
+
+      @if (isExpanded(project.id) && !sidebarCollapsed) {
+        @for (catalog of catalogsOf(project.id); track catalog.id) {
+        <div class="tree-row level-1" [class.active]="isScope('catalog', catalog.id)"
+          (click)="showScope({ type: 'catalog', id: catalog.id })" [title]="catalog.name">
+          <button class="tree-chevron" (click)="toggleNode(catalog.id, $event)"
+            [class.open]="isExpanded(catalog.id)" aria-label="Expandir catálogo">
+            <svg viewBox="0 0 24 24" width="12" height="12" stroke="currentColor" stroke-width="2.5" fill="none"
+              stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"></polyline></svg>
+          </button>
+          <span class="tree-icon icon-catalog">
+            <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
+              <line x1="7" y1="7" x2="7.01" y2="7"></line>
+            </svg>
+          </span>
+          <span class="tree-label">{{ catalog.name }}</span>
+          <span class="tree-count">{{ catalogConnections(catalog.id).length }}</span>
+          <div class="tree-actions">
+            <button (click)="openCatalogForm(project.id, catalog, $event)" title="Editar catálogo">
+              <svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" stroke-width="2" fill="none"
+                stroke-linecap="round" stroke-linejoin="round"><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+            </button>
+            <button (click)="deleteCatalog(catalog, $event)" class="delete-icon" title="Eliminar catálogo">
+              <svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" stroke-width="2" fill="none"
+                stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+            </button>
+          </div>
+        </div>
+        @if (isExpanded(catalog.id)) {
+          @for (conn of catalogConnections(catalog.id); track conn.id) {
+            <ng-container *ngTemplateOutlet="connRow; context: { $implicit: conn, level: 2 }"></ng-container>
+          }
+        }
+        }
+        @for (conn of projectDirectConnections(project.id); track conn.id) {
+          <ng-container *ngTemplateOutlet="connRow; context: { $implicit: conn, level: 1 }"></ng-container>
+        }
+      }
+      }
+
+      <!-- Sin agrupar -->
+      @if (ungroupedConnections.length > 0) {
+        @if (projects.length > 0) {
+        <div class="tree-row level-0" [class.active]="isScope('ungrouped')"
+          (click)="showScope({ type: 'ungrouped' })" title="Sin agrupar">
+          <button class="tree-chevron" (click)="toggleNode('ungrouped', $event)"
+            [class.open]="isExpanded('ungrouped')" aria-label="Expandir sin agrupar">
+            <svg viewBox="0 0 24 24" width="12" height="12" stroke="currentColor" stroke-width="2.5" fill="none"
+              stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"></polyline></svg>
+          </button>
+          <span class="tree-icon">
+            <svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" stroke-width="2" fill="none"
+              stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2" y="3" width="20" height="14" rx="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line>
+              <line x1="12" y1="17" x2="12" y2="21"></line>
+            </svg>
+          </span>
+          <span class="tree-label">Sin agrupar</span>
+          <span class="tree-count">{{ ungroupedConnections.length }}</span>
+        </div>
+        }
+        @if ((projects.length === 0 || isExpanded('ungrouped')) && !sidebarCollapsed) {
+          @for (conn of ungroupedConnections; track conn.id) {
+            <ng-container *ngTemplateOutlet="connRow; context: { $implicit: conn, level: projects.length ? 1 : 0 }"></ng-container>
+          }
+        }
+      }
+
+      @if (connections.length === 0 && projects.length === 0) {
+      <div class="empty-state hide-collapsed">No hay conexiones guardadas.</div>
+      }
+    </nav>
+
+    <!-- Fila de conexión reutilizable -->
+    <ng-template #connRow let-conn let-level="level">
+      <div class="tree-row conn-row" [ngClass]="'level-' + level" [class.active]="conn.id === activeConnectionId"
+        [class.live]="activeSessions.includes(conn.id)" (click)="connect(conn)"
+        [title]="conn.name + ' — ' + conn.username + '@' + conn.host">
+        <span class="tree-chevron spacer"></span>
+        <span class="status-dot"></span>
+        <div class="conn-info">
+          <span class="conn-name">{{ conn.name }}</span>
+          <span class="conn-host">{{ conn.username }}&#64;{{ conn.host }}</span>
+        </div>
+        <div class="tree-actions">
+          <button (click)="copyPassword(conn, $event)" title="Copiar clave">
+            <svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" stroke-width="2" fill="none"
               stroke-linecap="round" stroke-linejoin="round">
               <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
               <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
             </svg>
           </button>
           <button (click)="editConnection(conn, $event)" title="Editar">
-            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"
+            <svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" stroke-width="2" fill="none"
               stroke-linecap="round" stroke-linejoin="round">
-              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
               <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
             </svg>
           </button>
-          <button (click)="deleteConnection(conn.id!)" class="delete-icon" title="Eliminar">
-            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"
+          <button (click)="deleteConnection(conn.id, $event)" class="delete-icon" title="Eliminar">
+            <svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" stroke-width="2" fill="none"
               stroke-linecap="round" stroke-linejoin="round">
               <polyline points="3 6 5 6 21 6"></polyline>
               <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
             </svg>
           </button>
         </div>
-      </li>
-      <li *ngIf="connections.length === 0" class="empty-state">
-        No hay conexiones guardadas.
-      </li>
-    </ul>
+      </div>
+    </ng-template>
 
     <!-- Footer Sidebar con Perfil y Logout -->
     <div class="sidebar-footer">
-      <div class="user-profile" (click)="showProfileModal = true">
+      <div class="user-profile" (click)="showProfileModal = true" title="Mi perfil">
         <div class="user-avatar">
           {{ currentUser?.username?.charAt(0)?.toUpperCase() || 'U' }}
         </div>
-        <div class="user-info">
+        <div class="user-info hide-collapsed">
           <span class="username">{{ currentUser?.username }}</span>
           <span class="role">Admin</span>
         </div>
       </div>
-      <button (click)="logout()" class="btn-logout" title="Cerrar sesión">
+      <button (click)="logout()" class="btn-logout hide-collapsed" title="Cerrar sesión">
         <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"
           stroke-linecap="round" stroke-linejoin="round">
           <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
@@ -84,50 +220,139 @@
         </svg>
       </button>
     </div>
+
+    <!-- Asa para redimensionar -->
+    @if (!sidebarCollapsed) {
+    <div class="sidebar-resizer" (mousedown)="startResize($event)" title="Arrastra para ajustar el ancho"></div>
+    }
   </aside>
 
   <main class="main-content">
-    <!-- Dashboard (Grid de Conexiones) -->
+    <!-- Dashboard agrupado -->
     <div *ngIf="!activeConnectionId" class="dashboard-container">
       <div class="dashboard-header">
-        <h1>Dashboard de Conexiones</h1>
-        <p>Selecciona un servidor para iniciar una sesión SSH</p>
-      </div>
-
-      <div class="cards-grid">
-        <div *ngFor="let conn of connections" class="conn-card">
-          <div class="card-header">
-            <div class="card-icon">
-              <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"
-                stroke-linecap="round" stroke-linejoin="round">
-                <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
-                <line x1="8" y1="21" x2="16" y2="21"></line>
-                <line x1="12" y1="17" x2="12" y2="21"></line>
-              </svg>
-            </div>
-            <h3>{{ conn.name }}</h3>
-          </div>
-          <div class="card-body">
-            <p class="card-detail"><strong>Host:</strong> {{ conn.host }}:{{ conn.port }}</p>
-            <p class="card-detail"><strong>User:</strong> {{ conn.username }}</p>
-          </div>
-          <div class="card-footer">
-            <button class="btn-connect" (click)="connect(conn)">
-              <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none"
-                stroke-linecap="round" stroke-linejoin="round">
-                <polygon points="5 3 19 12 5 21 5 3"></polygon>
-              </svg>
-              Conectarme
-            </button>
-          </div>
+        <div class="dashboard-actions">
+          @if (dashboardScope.type === 'project') {
+          <button class="btn-secondary btn-sm-inline" (click)="openCatalogForm(dashboardScope.id)">+ Catálogo</button>
+          }
+          @if (dashboardScope.type === 'all') {
+          <button class="btn-secondary btn-sm-inline" (click)="openProjectForm()">+ Proyecto</button>
+          }
+          <button class="btn-primary btn-sm-inline" (click)="openForm()">+ Conexión</button>
         </div>
       </div>
 
-      <div *ngIf="connections.length === 0" class="welcome-container">
+      @for (project of scopedProjects; track project.id) {
+      <section class="group group-project">
+        @if (dashboardScope.type === 'all') {
+        <header class="group-header" (click)="showScope({ type: 'project', id: project.id })">
+          <span class="group-icon icon-project">
+            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+            </svg>
+          </span>
+          <h2>{{ project.name }}</h2>
+          <span class="group-count">{{ projectAllConnections(project.id).length }} conexiones</span>
+        </header>
+        }
+
+        <!-- Conexiones directas del proyecto -->
+        @if (dashboardScope.type !== 'catalog' && projectDirectConnections(project.id).length > 0) {
+        <div class="cards-grid">
+          @for (conn of projectDirectConnections(project.id); track conn.id) {
+            <ng-container *ngTemplateOutlet="connCard; context: { $implicit: conn }"></ng-container>
+          }
+        </div>
+        }
+
+        <!-- Catálogos -->
+        @for (catalog of scopedCatalogs(project.id); track catalog.id) {
+        <section class="group group-catalog">
+          @if (dashboardScope.type !== 'catalog') {
+          <header class="group-header" (click)="showScope({ type: 'catalog', id: catalog.id })">
+            <span class="group-icon icon-catalog">
+              <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
+                <line x1="7" y1="7" x2="7.01" y2="7"></line>
+              </svg>
+            </span>
+            <h3>{{ catalog.name }}</h3>
+            <span class="group-count">{{ catalogConnections(catalog.id).length }}</span>
+          </header>
+          }
+          <div class="cards-grid">
+            @for (conn of catalogConnections(catalog.id); track conn.id) {
+              <ng-container *ngTemplateOutlet="connCard; context: { $implicit: conn }"></ng-container>
+            } @empty {
+              <p class="group-empty">Este catálogo no tiene conexiones.</p>
+            }
+          </div>
+        </section>
+        }
+
+        @if (projectAllConnections(project.id).length === 0 && catalogsOf(project.id).length === 0) {
+        <p class="group-empty">Este proyecto está vacío. Agrega un catálogo o una conexión.</p>
+        }
+      </section>
+      }
+
+      @if (showUngroupedSection && ungroupedConnections.length > 0) {
+      <section class="group group-project">
+        @if (dashboardScope.type === 'all' && projects.length > 0) {
+        <header class="group-header" (click)="showScope({ type: 'ungrouped' })">
+          <h2>Sin agrupar</h2>
+          <span class="group-count">{{ ungroupedConnections.length }} conexiones</span>
+        </header>
+        }
+        <div class="cards-grid">
+          @for (conn of ungroupedConnections; track conn.id) {
+            <ng-container *ngTemplateOutlet="connCard; context: { $implicit: conn }"></ng-container>
+          }
+        </div>
+      </section>
+      }
+
+      <div *ngIf="connections.length === 0 && projects.length === 0" class="welcome-container">
         <h1>Bienvenido a SSH Manager</h1>
-        <p>No tienes conexiones. Haz clic en el botón '+' del panel lateral para agregar una.</p>
+        <p>No tienes conexiones. Crea un proyecto o haz clic en '+' para agregar una conexión.</p>
       </div>
     </div>
+
+    <!-- Tarjeta de conexión reutilizable -->
+    <ng-template #connCard let-conn>
+      <div class="conn-card" (click)="connect(conn)">
+        <div class="card-header">
+          <div class="card-icon">
+            <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"
+              stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+              <line x1="8" y1="21" x2="16" y2="21"></line>
+              <line x1="12" y1="17" x2="12" y2="21"></line>
+            </svg>
+          </div>
+          <h3 [title]="conn.name">{{ conn.name }}</h3>
+          <button class="card-edit" (click)="editConnection(conn, $event)" title="Editar" aria-label="Editar conexión">
+            <svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" stroke-width="2" fill="none"
+              stroke-linecap="round" stroke-linejoin="round"><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+          </button>
+        </div>
+        <div class="card-body">
+          <p class="card-detail"><strong>Host:</strong> {{ conn.host }}:{{ conn.port }}</p>
+          <p class="card-detail"><strong>User:</strong> {{ conn.username }}</p>
+        </div>
+        <div class="card-footer">
+          <button class="btn-connect" (click)="connect(conn, $event)">
+            <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none"
+              stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="5 3 19 12 5 21 5 3"></polygon>
+            </svg>
+            Conectarme
+          </button>
+        </div>
+      </div>
+    </ng-template>
 
     <!-- Terminal -->
     <div [style.display]="activeConnectionId ? 'flex' : 'none'" class="terminal-wrapper">
@@ -145,31 +370,130 @@
   </main>
 
   <!-- Modal de Perfil de Usuario -->
-  <div class="modal-overlay" *ngIf="showProfileModal" (click)="showProfileModal = false">
-    <div class="modal-content profile-modal" (click)="$event.stopPropagation()">
-      <div class="modal-header">
-        <h2>Mi Perfil</h2>
-        <button class="btn-close" (click)="showProfileModal = false">×</button>
-      </div>
-      <div class="profile-details">
-        <div class="profile-avatar-large">
-          {{ currentUser?.username?.charAt(0)?.toUpperCase() || 'U' }}
+  <div class="pm-overlay" *ngIf="showProfileModal" (click)="showProfileModal = false">
+    <div class="pm-card" role="dialog" aria-modal="true" aria-labelledby="pm-title" (click)="$event.stopPropagation()">
+      <!-- Banner -->
+      <div class="pm-banner">
+        <span class="pm-banner-title">Mi perfil</span>
+        <div class="pm-banner-actions">
+          <button class="pm-close" (click)="backupDb()" [disabled]="dbBusy"
+            title="Backup: exportar base de datos" aria-label="Exportar base de datos">
+            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+          </button>
+          <button class="pm-close" (click)="restoreDb()" [disabled]="dbBusy"
+            title="Restore: restaurar o combinar base de datos" aria-label="Restaurar base de datos">
+            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 12a9 9 0 1 0 3-6.7"></path>
+              <polyline points="3 3 3 9 9 9"></polyline>
+              <polyline points="12 7 12 12 15 14"></polyline>
+            </svg>
+          </button>
+          <span class="pm-banner-sep"></span>
+          <button class="pm-close" (click)="showProfileModal = false" aria-label="Cerrar">
+            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2.2" fill="none"
+              stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
         </div>
-        <h3>{{ currentUser?.name }} {{ currentUser?.lastname }}</h3>
-        <p class="profile-username">@{{ currentUser?.username }}</p>
-        <div class="profile-info-grid">
-          <div class="info-item">
-            <span class="info-label">Email</span>
-            <span class="info-value">{{ currentUser?.email }}</span>
+      </div>
+
+      <!-- Identidad -->
+      <div class="pm-identity">
+        <div class="pm-avatar">
+          {{ getUserInitials() }}
+          <span class="pm-status" title="En línea"></span>
+        </div>
+        <h2 id="pm-title" class="pm-name">{{ currentUser?.name }} {{ currentUser?.lastname }}</h2>
+        <div class="pm-meta">
+          <span class="pm-handle">&#64;{{ currentUser?.username }}</span>
+          <span class="pm-badge">
+            <svg viewBox="0 0 24 24" width="12" height="12" stroke="currentColor" stroke-width="2.5" fill="none"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+            </svg>
+            Administrador
+          </span>
+        </div>
+      </div>
+
+      <!-- Estadísticas -->
+      <div class="pm-stats">
+        <div class="pm-stat">
+          <span class="pm-stat-value">{{ connections.length }}</span>
+          <span class="pm-stat-label">Conexiones</span>
+        </div>
+        <div class="pm-stat">
+          <span class="pm-stat-value">{{ activeSessions.length }}</span>
+          <span class="pm-stat-label">Sesiones activas</span>
+        </div>
+      </div>
+
+      <!-- Información -->
+      <div class="pm-section">
+        <h4 class="pm-section-title">Información de la cuenta</h4>
+        <div class="pm-list">
+          <div class="pm-row">
+            <div class="pm-row-icon">
+              <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+              </svg>
+            </div>
+            <div class="pm-row-text">
+              <span class="pm-row-label">Nombre completo</span>
+              <span class="pm-row-value">{{ currentUser?.name }} {{ currentUser?.lastname }}</span>
+            </div>
           </div>
-          <div class="info-item">
-            <span class="info-label">Rol</span>
-            <span class="info-value">Administrador</span>
+          <div class="pm-row">
+            <div class="pm-row-icon">
+              <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"
+                stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="4" width="20" height="16" rx="2"></rect>
+                <path d="m22 7-10 6L2 7"></path>
+              </svg>
+            </div>
+            <div class="pm-row-text">
+              <span class="pm-row-label">Correo electrónico</span>
+              <span class="pm-row-value" [title]="currentUser?.email">{{ currentUser?.email }}</span>
+            </div>
+          </div>
+          <div class="pm-row">
+            <div class="pm-row-icon">
+              <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"
+                stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="4"></circle>
+                <path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-4 8"></path>
+              </svg>
+            </div>
+            <div class="pm-row-text">
+              <span class="pm-row-label">Usuario</span>
+              <span class="pm-row-value">{{ currentUser?.username }}</span>
+            </div>
           </div>
         </div>
       </div>
-      <div class="modal-actions" style="margin-top: 20px;">
-        <button class="btn-secondary" (click)="showProfileModal = false">Cerrar</button>
+
+      <!-- Acciones -->
+      <div class="pm-footer">
+        <button class="pm-btn pm-btn-danger" (click)="showProfileModal = false; logout()">
+          <svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" stroke-width="2" fill="none"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+            <polyline points="16 17 21 12 16 7"></polyline>
+            <line x1="21" y1="12" x2="9" y2="12"></line>
+          </svg>
+          Cerrar sesión
+        </button>
+        <button class="pm-btn pm-btn-ghost" (click)="showProfileModal = false">Cerrar</button>
       </div>
     </div>
   </div>
@@ -197,6 +521,23 @@
         <div class="form-group">
           <label>Usuario</label>
           <input type="text" [(ngModel)]="newConnection.username" name="username" required>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Proyecto</label>
+            <select [(ngModel)]="newConnection.project_id" name="project_id" (ngModelChange)="onFormProjectChange()">
+              <option [ngValue]="null">— Sin proyecto —</option>
+              @for (p of projects; track p.id) { <option [ngValue]="p.id">{{ p.name }}</option> }
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Catálogo</label>
+            <select [(ngModel)]="newConnection.catalog_id" name="catalog_id" [disabled]="!newConnection.project_id">
+              <option [ngValue]="null">— Directo en el proyecto —</option>
+              @for (c of formCatalogs; track c.id) { <option [ngValue]="c.id">{{ c.name }}</option> }
+            </select>
+          </div>
         </div>
 
         <div class="form-group">
@@ -228,6 +569,33 @@
   </div>
 </div>
 
+<!-- Modal Proyecto / Catálogo -->
+@if (isLoggedIn && groupForm) {
+<div class="modal-overlay" (click)="groupForm = null">
+  <div class="modal-content form-container form-small" (click)="$event.stopPropagation()">
+    <h3>{{ groupForm.id ? 'Editar' : 'Nuevo' }} {{ groupForm.kind === 'project' ? 'proyecto' : 'catálogo' }}</h3>
+    <form (ngSubmit)="saveGroupForm()" #groupNgForm="ngForm">
+      <div class="form-group">
+        <label>Nombre</label>
+        <input type="text" [(ngModel)]="groupForm.name" name="groupName" required autofocus>
+      </div>
+      @if (groupForm.kind === 'catalog') {
+      <div class="form-group">
+        <label>Proyecto</label>
+        <select [(ngModel)]="groupForm.project_id" name="groupProject" required>
+          @for (p of projects; track p.id) { <option [ngValue]="p.id">{{ p.name }}</option> }
+        </select>
+      </div>
+      }
+      <div class="form-actions">
+        <button type="button" (click)="groupForm = null" class="btn-secondary">Cancelar</button>
+        <button type="submit" [disabled]="!groupNgForm.valid" class="btn-primary">{{ groupForm.id ? 'Actualizar' : 'Crear' }}</button>
+      </div>
+    </form>
+  </div>
+</div>
+}
+
 <!-- Toast Notifications -->
 <div class="toast-container">
   @for (toast of toasts; track toast.id) {
@@ -240,5 +608,29 @@
     <span class="toast-message">{{ toast.message }}</span>
   </div>
   }
+</div>
+}
+
+<!-- Aviso de cierre por inactividad -->
+@if (idleCountdown !== null) {
+<div class="pm-overlay idle-overlay" (click)="stayActive()">
+  <div class="pm-card idle-card" role="alertdialog" aria-modal="true" aria-labelledby="idle-title"
+    (click)="$event.stopPropagation()">
+    <div class="idle-icon">
+      <svg viewBox="0 0 24 24" width="28" height="28" stroke="currentColor" stroke-width="2" fill="none"
+        stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"></circle>
+        <polyline points="12 6 12 12 16 14"></polyline>
+      </svg>
+    </div>
+    <h2 id="idle-title" class="idle-title">¿Sigues ahí?</h2>
+    <p class="idle-text">
+      No detectamos actividad. La aplicación se cerrará en
+      <strong class="idle-count">{{ idleCountdown }}</strong> segundos.
+    </p>
+    <div class="pm-footer">
+      <button class="pm-btn pm-btn-primary" (click)="stayActive()" autofocus>Seguir usando</button>
+    </div>
+  </div>
 </div>
 }

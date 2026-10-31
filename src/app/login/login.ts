@@ -1,8 +1,23 @@
-import { Component, OnInit, Output, EventEmitter, NgZone } from '@angular/core';
+import { Component, OnInit, Output, EventEmitter, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { IpcService } from '../ipc.service';
+import { AuthService } from '../core/services/auth.service';
+import { LoginForm, RecoverForm, RegisterForm, User } from '../core/models';
+import { ipcErrorMessage } from '../core/utils/ipc-error';
+import { allFilled, firstError, isValidPassword, isValidPin, ValidationMessages as V } from '../core/utils/validators';
 
+export type AuthMode = 'login' | 'register' | 'recover';
+
+const emptyLoginForm = (): LoginForm => ({ username: '', password: '' });
+const emptyRegisterForm = (): RegisterForm => ({
+  name: '', lastname: '', username: '', email: '', password: '', confirmPassword: '', recoveryPin: '',
+});
+const emptyRecoverForm = (): RecoverForm => ({ username: '', recoveryPin: '', newPassword: '', confirmPassword: '' });
+
+/**
+ * ViewModel de la pantalla de autenticación (login.html).
+ * Valida formularios y delega la autenticación en AuthService.
+ */
 @Component({
   selector: 'app-login',
   standalone: true,
@@ -11,113 +26,120 @@ import { IpcService } from '../ipc.service';
   styleUrls: ['./login.css']
 })
 export class LoginComponent implements OnInit {
-  @Output() loginSuccess = new EventEmitter<any>();
+  @Output() loginSuccess = new EventEmitter<User>();
 
-  mode: 'login' | 'register' = 'login';
+  mode: AuthMode = 'login';
   hasUsers = true; // asumir que hay usuarios hasta confirmar lo contrario
   loading = false;
   errorMsg = '';
   successMsg = '';
 
-  loginForm = { username: '', password: '' };
+  loginForm = emptyLoginForm();
+  registerForm = emptyRegisterForm();
+  recoverForm = emptyRecoverForm();
 
-  registerForm = {
-    name: '',
-    lastname: '',
-    username: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-    recoveryPin: ''
-  };
+  constructor(private auth: AuthService, private cdr: ChangeDetectorRef) {}
 
-  constructor(private ipc: IpcService, private zone: NgZone) {}
-
-  ngOnInit() {
-    this.ipc.invoke('auth:has-users')
-      .then((hasUsers: boolean) => {
-        this.zone.run(() => {
-          this.hasUsers = hasUsers;
-          this.mode = hasUsers ? 'login' : 'register';
-        });
-      })
-      .catch(() => {
-        // Si falla el IPC, dejamos login por defecto
-      });
+  get titleText(): string {
+    if (this.mode === 'recover') return 'Recuperar Contraseña';
+    return this.hasUsers ? 'Iniciar Sesión' : 'Crear Cuenta';
   }
 
-  async onLogin() {
-    this.errorMsg = '';
-    if (!this.loginForm.username || !this.loginForm.password) {
-      this.errorMsg = 'Por favor completa todos los campos.';
-      return;
-    }
-    this.loading = true;
+  get subtitleText(): string {
+    if (this.mode === 'recover') return 'Usa tu PIN de recuperación para crear una nueva contraseña';
+    return this.hasUsers ? 'Ingresa tus credenciales para continuar' : 'Registra el primer usuario del sistema';
+  }
+
+  async ngOnInit() {
     try {
-      const user = await this.ipc.invoke('auth:login', this.loginForm);
-      this.zone.run(() => {
-        this.loginSuccess.emit(user);
-      });
-    } catch (err: any) {
-      this.zone.run(() => {
-        this.errorMsg = err?.message || 'Error al iniciar sesión.';
-        this.loading = false;
-      });
+      this.hasUsers = await this.auth.hasUsers();
+      this.mode = this.hasUsers ? 'login' : 'register';
+      this.cdr.markForCheck();
+    } catch {
+      // Si falla el IPC, dejamos login por defecto
     }
+  }
+
+  switchMode(mode: AuthMode) {
+    if (mode === 'recover') this.recoverForm.username = this.loginForm.username;
+    this.mode = mode;
+    this.clearMessages();
+  }
+
+  // ───────────── Comandos ─────────────
+
+  async onLogin() {
+    const f = this.loginForm;
+    const error = firstError([[!allFilled(f.username, f.password), V.REQUIRED]]);
+
+    await this.submit(error, 'Error al iniciar sesión.', async () => {
+      const user = await this.auth.login(f.username, f.password);
+      this.loginSuccess.emit(user);
+    });
   }
 
   async onRegister() {
-    this.errorMsg = '';
-    this.successMsg = '';
+    const f = this.registerForm;
+    const error = firstError([
+      [!allFilled(f.username, f.name, f.lastname, f.email, f.password), V.REQUIRED],
+      [f.password !== f.confirmPassword, V.PASSWORDS_MISMATCH],
+      [!isValidPin(f.recoveryPin), V.INVALID_PIN],
+      [!isValidPassword(f.password), V.SHORT_PASSWORD],
+    ]);
 
-    if (!this.registerForm.username || !this.registerForm.name ||
-        !this.registerForm.lastname || !this.registerForm.email || !this.registerForm.password) {
-      this.errorMsg = 'Por favor completa todos los campos.';
-      return;
-    }
+    await this.submit(error, 'Error al registrar usuario.', async () => {
+      const { confirmPassword, ...data } = f;
+      await this.auth.register(data);
+      this.goToLogin(f.username, '¡Usuario creado exitosamente! Ahora puedes iniciar sesión.');
+      this.registerForm = emptyRegisterForm();
+    });
+  }
 
-    if (this.registerForm.password !== this.registerForm.confirmPassword) {
-      this.errorMsg = 'Las contraseñas no coinciden.';
-      return;
-    }
+  async onRecover() {
+    const f = this.recoverForm;
+    const error = firstError([
+      [!allFilled(f.username, f.recoveryPin, f.newPassword, f.confirmPassword), V.REQUIRED],
+      [!isValidPin(f.recoveryPin), V.INVALID_PIN],
+      [!isValidPassword(f.newPassword), V.SHORT_PASSWORD],
+      [f.newPassword !== f.confirmPassword, V.PASSWORDS_MISMATCH],
+    ]);
 
-    if (!this.registerForm.recoveryPin || !/^\d{6}$/.test(this.registerForm.recoveryPin)) {
-      this.errorMsg = 'El PIN de recuperación debe ser de 6 dígitos numéricos.';
-      return;
-    }
+    await this.submit(error, 'Error al recuperar la contraseña.', async () => {
+      const { confirmPassword, ...data } = f;
+      await this.auth.recoverPassword(data);
+      this.goToLogin(f.username, 'Contraseña actualizada. Ya puedes iniciar sesión.');
+      this.recoverForm = emptyRecoverForm();
+    });
+  }
 
-    if (this.registerForm.password.length < 8) {
-      this.errorMsg = 'La contraseña debe tener al menos 8 caracteres.';
+  // ───────────── Helpers ─────────────
+
+  /** Flujo común: validar → loading → ejecutar → mostrar error */
+  private async submit(validationError: string | null, fallbackError: string, action: () => Promise<void>) {
+    this.clearMessages();
+    if (validationError) {
+      this.errorMsg = validationError;
       return;
     }
 
     this.loading = true;
     try {
-      await this.ipc.invoke('auth:register', {
-        username: this.registerForm.username,
-        name: this.registerForm.name,
-        lastname: this.registerForm.lastname,
-        email: this.registerForm.email,
-        password: this.registerForm.password,
-        recoveryPin: this.registerForm.recoveryPin
-      });
-      this.zone.run(() => {
-        this.successMsg = '¡Usuario creado exitosamente! Ahora puedes iniciar sesión.';
-        this.mode = 'login';
-        this.loginForm.username = this.registerForm.username;
-        this.registerForm = { username: '', name: '', lastname: '', email: '', password: '', confirmPassword: '', recoveryPin: '' };
-        this.loading = false;
-      });
-    } catch (err: any) {
-      this.zone.run(() => {
-        this.errorMsg = err?.message || 'Error al registrar usuario.';
-        this.loading = false;
-      });
+      await action();
+    } catch (err) {
+      this.errorMsg = ipcErrorMessage(err, fallbackError);
+    } finally {
+      this.loading = false;
+      this.cdr.markForCheck();
     }
   }
 
-  switchMode(m: 'login' | 'register') {
-    this.mode = m;
+  private goToLogin(username: string, successMsg: string) {
+    this.mode = 'login';
+    this.loginForm = { ...emptyLoginForm(), username };
+    this.successMsg = successMsg;
+  }
+
+  private clearMessages() {
     this.errorMsg = '';
     this.successMsg = '';
   }
