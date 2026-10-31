@@ -24,7 +24,7 @@ class SshSessionService {
     // Lanzar ssh directamente (sin shell intermedio): al terminar la sesión
     // el proceso muere y onExit cierra la terminal en la UI.
     const proc = pty.spawn(this.sshBinary(), this.buildSshArgs(conn), {
-      name: 'xterm-color',
+      name: 'xterm-256color',
       cols,
       rows,
       cwd: process.env.HOME || process.env.USERPROFILE,

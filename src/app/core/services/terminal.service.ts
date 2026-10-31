@@ -49,7 +49,7 @@ export class TerminalService {
     term.onData(data => this.ssh.write(id, data));
     term.onResize(({ cols, rows }) => this.ssh.resize(id, cols, rows));
     this.bindClipboard(id, term);
-    const cleanup = this.bindPasteOnRightClick(id, container);
+    const cleanup = this.bindPasteOnRightClick(term, container);
 
     this.terminals.set(id, { term, fit, cleanup });
     term.focus();
@@ -92,17 +92,17 @@ export class TerminalService {
         return false;
       }
       if (key === 'v') {
-        this.paste(id);
+        this.paste(term);
         return false;
       }
       return true;
     });
   }
 
-  private bindPasteOnRightClick(id: string, container: HTMLElement): () => void {
+  private bindPasteOnRightClick(term: Terminal, container: HTMLElement): () => void {
     const onContextMenu = (e: MouseEvent) => {
       e.preventDefault();
-      this.paste(id);
+      this.paste(term);
     };
     container.addEventListener('contextmenu', onContextMenu);
     return () => container.removeEventListener('contextmenu', onContextMenu);
@@ -112,10 +112,15 @@ export class TerminalService {
     navigator.clipboard.writeText(text).catch(() => {});
   }
 
-  private async paste(id: string): Promise<void> {
+  /**
+   * Pega a través de xterm (no directo al pty): normaliza saltos de línea
+   * (\r\n / \n → \r, evita líneas en blanco extra) y usa bracketed paste si la
+   * shell lo activó, así los tabs del texto no disparan el autocompletado.
+   */
+  private async paste(term: Terminal): Promise<void> {
     try {
       const text = await navigator.clipboard.readText();
-      if (text) this.ssh.write(id, text);
+      if (text) term.paste(text);
     } catch (err) {
       console.error('Error al pegar en la terminal:', err);
     }
