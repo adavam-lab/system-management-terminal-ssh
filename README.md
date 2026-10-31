@@ -21,9 +21,23 @@
 
 ## 📸 Capturas de Pantalla
 
-| Login | Dashboard | Terminal |
-|:-----:|:---------:|:--------:|
-| ![Login](public/login.png) | ![Dashboard](public/dash.png) | ![Terminal](public/terminal.png) |
+<p align="center">
+  <img src="public/img-github/slideshow.gif" alt="Recorrido por SSH Manager" width="900" />
+</p>
+
+<details>
+<summary><b>🖼️ Ver todas las capturas</b></summary>
+<br />
+
+| Login | Dashboard |
+|:-----:|:---------:|
+| <img src="public/img-github/login.png" width="420" /> | <img src="public/img-github/dash.png" width="420" /> |
+| **Conexión** | **Perfil y respaldo** |
+| <img src="public/img-github/conecction.png" width="420" /> | <img src="public/img-github/profile-backup.png" width="420" /> |
+| **Respaldo y restauración** | **Recuperación de cuenta** |
+| <img src="public/img-github/backup-restore.png" width="420" /> | <img src="public/img-github/recovery.png" width="420" /> |
+
+</details>
 
 ---
 
