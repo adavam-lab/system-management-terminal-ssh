@@ -19,6 +19,18 @@
     "appId": "com.ssh-manager.app",
     "productName": "SSH Manager",
     "copyright": "Copyright © ADAVAM",
+    "icon": "public/logo-single.png",
+    "mac": {
+      "icon": "public/logo-single.png",
+      "category": "public.app-category.developer-tools",
+      "target": [
+        "dmg"
+      ]
+    },
+    "dmg": {
+      "icon": "public/logo-single.png",
+      "title": "${productName} ${version}"
+    },
     "win": {
       "icon": "public/logo-single.png"
     },
