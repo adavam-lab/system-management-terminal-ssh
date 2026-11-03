@@ -1,4 +1,4 @@
-; Personalización del instalador NSIS de SSH Manager (ADAVAM)
+; Personalización del instalador NSIS de XSS Manager (ADAVAM)
 ; Documentación: https://www.electron.build/docs/nsis#custom-nsis-script
 
 !macro customWelcomePage

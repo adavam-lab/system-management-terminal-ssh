@@ -3,13 +3,16 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
 import { LoginComponent } from './login/login';
-import { Catalog, Connection, DashboardScope, GroupForm, Project, Toast, User } from './core/models';
+import { RemoteDesktopComponent } from './remote-desktop/remote-desktop.component';
+import { Catalog, Connection, ConnectionKind, DashboardScope, GroupForm, Project, RemoteOs, Toast, User } from './core/models';
 import { ConnectionTree } from './core/utils/connection-tree';
 import { ipcErrorMessage } from './core/utils/ipc-error';
 import { ConnectionService } from './core/services/connection.service';
 import { GroupingService } from './core/services/grouping.service';
 import { BackupService } from './core/services/backup.service';
 import { SshService } from './core/services/ssh.service';
+import { RemoteDesktopService } from './core/services/remote-desktop.service';
+import { RustDeskService, RustDeskStatus } from './core/services/rustdesk.service';
 import { TerminalService } from './core/services/terminal.service';
 import { ToastService } from './core/services/toast.service';
 import { SessionStateService } from './core/services/session-state.service';
@@ -25,6 +28,28 @@ const CONNECTING_TOAST_MS = 2000;
 const LONG_TOAST_MS = 3500;
 const ERROR_TOAST_MS = 5000;
 
+const DEFAULT_VNC_PORT = 5900;
+
+/** Textos de ayuda del formulario según el sistema del equipo remoto */
+export const REMOTE_OS_OPTIONS: { value: RemoteOs; label: string; hint: string }[] = [
+  {
+    value: 'windows',
+    label: 'Windows',
+    hint: 'Requiere OpenSSH Server y TightVNC con "Allow only loopback connections". Usa la contraseña de TightVNC.',
+  },
+  {
+    value: 'mac',
+    label: 'macOS',
+    hint: 'Activa "Sesión remota" y "Compartir pantalla" en Ajustes → General → Compartir. ' +
+      'Si dejas vacía la contraseña VNC se usa la de tu cuenta de Mac.',
+  },
+  {
+    value: 'linux',
+    label: 'Linux',
+    hint: 'Requiere sshd y x11vnc (sesión X11): x11vnc -display :0 -localhost -rfbauth ~/.vnc/passwd -forever',
+  },
+];
+
 const delay = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
 
 /**
@@ -35,7 +60,7 @@ const delay = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, m
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, FormsModule, LoginComponent],
+  imports: [CommonModule, FormsModule, LoginComponent, RemoteDesktopComponent],
   templateUrl: './app.html',
   styleUrls: ['./app.css']
 })
@@ -59,6 +84,9 @@ export class AppComponent implements OnInit, OnDestroy {
   dbBusy = false;
   groupForm: GroupForm | null = null;
   newConnection: Connection = this.emptyConnection();
+  readonly remoteOsOptions = REMOTE_OS_OPTIONS;
+  /** Estado del cliente RustDesk local (se consulta al abrir el formulario) */
+  rustdeskStatus: RustDeskStatus | null = null;
 
   private isSaving = false;
   private resizing = false;
@@ -69,6 +97,8 @@ export class AppComponent implements OnInit, OnDestroy {
     private groupingService: GroupingService,
     private backupService: BackupService,
     private ssh: SshService,
+    private remoteDesktop: RemoteDesktopService,
+    private rustdesk: RustDeskService,
     private terminals: TerminalService,
     private toast: ToastService,
     private sessionState: SessionStateService,
@@ -85,6 +115,7 @@ export class AppComponent implements OnInit, OnDestroy {
 
     // Las terminales del renderer se pierden al refrescar: cerrar procesos SSH huérfanos
     this.ssh.closeAll().catch(() => {});
+    this.remoteDesktop.stopAll().catch(() => {});
 
     this.idle.start(() => this.lifecycle.quitForInactivity());
     this.loadAll();
@@ -331,8 +362,49 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   getActiveConnectionName(connectionId?: string): string {
+    return this.connectionOf(connectionId)?.name ?? '';
+  }
+
+  connectionOf(connectionId?: string | null): Connection | undefined {
     const id = connectionId || this.activeConnectionId;
-    return this.connections.find(c => c.id === id)?.name ?? '';
+    return this.connections.find(c => c.id === id);
+  }
+
+  isRemote(connectionId?: string | null): boolean {
+    return this.connectionOf(connectionId)?.kind === 'remote';
+  }
+
+  remoteOsLabel(conn: Connection): string {
+    return REMOTE_OS_OPTIONS.find(o => o.value === conn.remote_os)?.label ?? '';
+  }
+
+  /** ID de RustDesk en grupos de 3 dígitos: 123456789 → "123 456 789" */
+  formatRustDeskId(id: string | undefined): string {
+    return /^\d+$/.test(id ?? '') ? id!.replace(/\B(?=(\d{3})+$)/g, ' ') : id ?? '';
+  }
+
+  /** Texto secundario de una conexión en el sidebar */
+  connectionSubtitle(conn: Connection): string {
+    return conn.kind === 'rustdesk' ? `ID ${this.formatRustDeskId(conn.host)}` : `${conn.username}@${conn.host}`;
+  }
+
+  setFormKind(kind: ConnectionKind) {
+    this.newConnection.kind = kind;
+    if (kind === 'rustdesk') this.loadRustDeskStatus();
+  }
+
+  private async loadRustDeskStatus() {
+    try {
+      this.rustdeskStatus = await this.rustdesk.status();
+    } catch {
+      this.rustdeskStatus = null;
+    }
+    this.refreshView();
+  }
+
+  /** Ayuda del formulario para el sistema remoto elegido */
+  get formRemoteHint(): string {
+    return REMOTE_OS_OPTIONS.find(o => o.value === this.newConnection.remote_os)?.hint ?? '';
   }
 
   // ───────────── Dashboard / navegación ─────────────
@@ -467,7 +539,13 @@ export class AppComponent implements OnInit, OnDestroy {
     this.isEditing = true;
     this.showForm = true;
     // Clonamos el objeto para no modificar la vista hasta guardar
-    this.newConnection = { ...conn };
+    this.newConnection = {
+      ...conn,
+      kind: conn.kind ?? 'ssh',
+      remote_os: conn.remote_os ?? 'windows',
+      vnc_port: conn.vnc_port ?? DEFAULT_VNC_PORT,
+    };
+    if (conn.kind === 'rustdesk') this.loadRustDeskStatus();
   }
 
   cancelForm() {
@@ -490,7 +568,7 @@ export class AppComponent implements OnInit, OnDestroy {
       this.isEditing = false;
     } catch (err) {
       console.error('Error saving connection:', err);
-      this.toast.error('Error al guardar la conexión');
+      this.toast.error(`Error al guardar la conexión: ${ipcErrorMessage(err)}`, ERROR_TOAST_MS);
     } finally {
       this.isSaving = false;
       this.refreshView();
@@ -529,7 +607,8 @@ export class AppComponent implements OnInit, OnDestroy {
   async copyPassword(conn: Connection, event?: Event) {
     event?.stopPropagation();
     if (!conn.password) {
-      this.toast.info('Esta conexión no tiene contraseña o usa llave SSH');
+      this.toast.info(conn.kind === 'rustdesk' ? 'Esta conexión no tiene contraseña guardada'
+        : 'Esta conexión no tiene contraseña o usa llave SSH');
       return;
     }
     try {
@@ -550,7 +629,10 @@ export class AppComponent implements OnInit, OnDestroy {
       catalog_id = scope.id;
       project_id = ConnectionTree.projectIdOfCatalog(this.catalogs, scope.id);
     }
-    return { name: '', host: '', port: 22, username: '', auth_type: 'password', project_id, catalog_id };
+    return {
+      name: '', host: '', port: 22, username: '', auth_type: 'password', project_id, catalog_id,
+      kind: 'ssh', remote_os: 'windows', vnc_port: DEFAULT_VNC_PORT, vnc_password: null,
+    };
   }
 
   // ───────────── Terminales SSH ─────────────
@@ -559,6 +641,12 @@ export class AppComponent implements OnInit, OnDestroy {
     event?.stopPropagation();
     const id = conn.id;
     if (!id) return;
+
+    // RustDesk abre su propia ventana: no hay pestaña ni sesión en XSS Manager
+    if (conn.kind === 'rustdesk') {
+      await this.openRustDesk(conn);
+      return;
+    }
 
     this.showForm = false;
     this.activeConnectionId = id;
@@ -571,6 +659,14 @@ export class AppComponent implements OnInit, OnDestroy {
     }
 
     this.activeSessions.push(id);
+
+    // Escritorio remoto: <app-remote-desktop> abre el túnel y muestra su propio estado
+    if (conn.kind === 'remote') {
+      this.toast.info(`Abriendo escritorio de ${conn.name}...`, CONNECTING_TOAST_MS);
+      this.refreshView();
+      return;
+    }
+
     this.toast.info(`Conectando a ${conn.name}...`, CONNECTING_TOAST_MS);
 
     // Esperar a que la plantilla renderice el contenedor `term-<id>`
@@ -588,6 +684,15 @@ export class AppComponent implements OnInit, OnDestroy {
     }
   }
 
+  private async openRustDesk(conn: Connection) {
+    try {
+      await this.rustdesk.launch(conn.id!);
+      this.toast.success(`Abriendo RustDesk: ${conn.name}`);
+    } catch (err) {
+      this.toast.error(ipcErrorMessage(err, 'No se pudo abrir RustDesk'), ERROR_TOAST_MS);
+    }
+  }
+
   /**
    * @param connectionId sesión a cerrar (por defecto, la activa)
    * @param isFromBackend true si el proceso ya terminó en el backend
@@ -597,7 +702,8 @@ export class AppComponent implements OnInit, OnDestroy {
     if (!id) return;
 
     const name = this.getActiveConnectionName(id);
-    if (!isFromBackend) this.ssh.close(id).catch(() => {});
+    // Escritorio remoto: al salir de activeSessions se destruye su componente, que cierra el túnel
+    if (!isFromBackend && !this.isRemote(id)) this.ssh.close(id).catch(() => {});
 
     this.terminals.dispose(id);
     this.activeSessions = this.activeSessions.filter(s => s !== id);

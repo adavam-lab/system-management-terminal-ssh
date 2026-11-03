@@ -168,12 +168,16 @@
     <ng-template #connRow let-conn let-level="level">
       <div class="tree-row conn-row" [ngClass]="'level-' + level" [class.active]="conn.id === activeConnectionId"
         [class.live]="activeSessions.includes(conn.id)" (click)="connect(conn)"
-        [title]="conn.name + ' — ' + conn.username + '@' + conn.host">
+        [title]="conn.name + ' — ' + connectionSubtitle(conn)">
         <span class="tree-chevron spacer"></span>
         <span class="status-dot"></span>
         <div class="conn-info">
-          <span class="conn-name">{{ conn.name }}</span>
-          <span class="conn-host">{{ conn.username }}&#64;{{ conn.host }}</span>
+          <span class="conn-name">
+            {{ conn.name }}
+            @if (conn.kind === 'remote') { <span class="kind-badge" title="Escritorio remoto (VNC)">{{ remoteOsLabel(conn) }}</span> }
+            @if (conn.kind === 'rustdesk') { <span class="kind-badge kind-rustdesk" title="RustDesk">RD</span> }
+          </span>
+          <span class="conn-host">{{ connectionSubtitle(conn) }}</span>
         </div>
         <div class="tree-actions">
           <button (click)="copyPassword(conn, $event)" title="Copiar clave">
@@ -315,7 +319,7 @@
       }
 
       <div *ngIf="connections.length === 0 && projects.length === 0" class="welcome-container">
-        <h1>Bienvenido a SSH Manager</h1>
+        <h1>Bienvenido a XSS Manager</h1>
         <p>No tienes conexiones. Crea un proyecto o haz clic en '+' para agregar una conexión.</p>
       </div>
     </div>
@@ -325,12 +329,32 @@
       <div class="conn-card" (click)="connect(conn)">
         <div class="card-header">
           <div class="card-icon">
+            @if (conn.kind === 'rustdesk') {
+            <!-- RustDesk: dos pantallas enlazadas -->
+            <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"
+              stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2" y="4" width="9" height="7" rx="1"></rect>
+              <rect x="13" y="13" width="9" height="7" rx="1"></rect>
+              <path d="M6.5 11v3a2 2 0 0 0 2 2H13"></path>
+              <path d="M17.5 13v-3a2 2 0 0 0-2-2H11"></path>
+            </svg>
+            } @else if (conn.kind === 'remote') {
+            <!-- Escritorio remoto: monitor con puntero -->
             <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"
               stroke-linecap="round" stroke-linejoin="round">
               <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
               <line x1="8" y1="21" x2="16" y2="21"></line>
               <line x1="12" y1="17" x2="12" y2="21"></line>
+              <polygon points="9 7 9 13 11 11.5 12.5 14 13.5 13.5 12.2 11 14.5 10.8 9 7"></polygon>
             </svg>
+            } @else {
+            <!-- Terminal -->
+            <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"
+              stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="4 17 10 11 4 5"></polyline>
+              <line x1="12" y1="19" x2="20" y2="19"></line>
+            </svg>
+            }
           </div>
           <h3 [title]="conn.name">{{ conn.name }}</h3>
           <button class="card-edit" (click)="editConnection(conn, $event)" title="Editar" aria-label="Editar conexión">
@@ -339,8 +363,16 @@
           </button>
         </div>
         <div class="card-body">
+          @if (conn.kind === 'rustdesk') {
+          <p class="card-detail"><strong>ID RustDesk:</strong> {{ formatRustDeskId(conn.host) }}</p>
+          <p class="card-detail"><strong>Sistema:</strong> {{ remoteOsLabel(conn) || '—' }}</p>
+          } @else {
           <p class="card-detail"><strong>Host:</strong> {{ conn.host }}:{{ conn.port }}</p>
           <p class="card-detail"><strong>User:</strong> {{ conn.username }}</p>
+          }
+          @if (conn.kind === 'remote') {
+          <p class="card-detail"><strong>Escritorio:</strong> {{ remoteOsLabel(conn) }} · VNC {{ conn.vnc_port || 5900 }}</p>
+          }
         </div>
         <div class="card-footer">
           <button class="btn-connect" (click)="connect(conn, $event)">
@@ -348,7 +380,7 @@
               stroke-linecap="round" stroke-linejoin="round">
               <polygon points="5 3 19 12 5 21 5 3"></polygon>
             </svg>
-            Conectarme
+            {{ conn.kind === 'remote' ? 'Ver escritorio' : conn.kind === 'rustdesk' ? 'Abrir RustDesk' : 'Conectarme' }}
           </button>
         </div>
       </div>
@@ -357,14 +389,21 @@
     <!-- Terminal -->
     <div [style.display]="activeConnectionId ? 'flex' : 'none'" class="terminal-wrapper">
       <div class="terminal-header">
-        <span>Terminal Activa: {{ getActiveConnectionName() }}</span>
+        <span>{{ isRemote() ? 'Escritorio remoto' : 'Terminal Activa' }}: {{ getActiveConnectionName() }}</span>
         <button (click)="disconnect(undefined, false)" class="btn-danger btn-sm"
           (mouseup)="$any($event.target).blur()">⬛ Cerrar Conexión</button>
       </div>
       <!-- Contenedores de Terminales -->
       <ng-container *ngFor="let sessionId of activeSessions">
+        @if (isRemote(sessionId)) {
+        <div [hidden]="sessionId !== activeConnectionId" class="terminal-container remote-container">
+          <app-remote-desktop [connectionId]="sessionId" [os]="connectionOf(sessionId)?.remote_os"
+            [active]="sessionId === activeConnectionId" />
+        </div>
+        } @else {
         <div [id]="'term-' + sessionId" [hidden]="sessionId !== activeConnectionId" class="terminal-container">
         </div>
+        }
       </ng-container>
     </div>
   </main>
@@ -505,16 +544,72 @@
       <form (ngSubmit)="saveConnection()" #connForm="ngForm">
         <!-- No se necesita campo oculto para el id, ya está en this.newConnection -->
         <div class="form-group">
+          <label>Tipo de conexión</label>
+          <div class="kind-toggle" role="radiogroup" aria-label="Tipo de conexión">
+            <button type="button" role="radio" [class.active]="!newConnection.kind || newConnection.kind === 'ssh'"
+              [attr.aria-checked]="!newConnection.kind || newConnection.kind === 'ssh'" (click)="setFormKind('ssh')"
+              title="Terminal de comandos por SSH">
+              Terminal SSH
+            </button>
+            <button type="button" role="radio" [class.active]="newConnection.kind === 'remote'"
+              [attr.aria-checked]="newConnection.kind === 'remote'" (click)="setFormKind('remote')"
+              title="Pantalla del equipo por VNC dentro de un túnel SSH (misma red o VPN)">
+              Escritorio (VNC)
+            </button>
+            <button type="button" role="radio" [class.active]="newConnection.kind === 'rustdesk'"
+              [attr.aria-checked]="newConnection.kind === 'rustdesk'" (click)="setFormKind('rustdesk')"
+              title="Pantalla del equipo con RustDesk, desde cualquier red (tipo AnyDesk)">
+              RustDesk
+            </button>
+          </div>
+        </div>
+        <div class="form-group">
           <label>Nombre del Perfil</label>
           <input type="text" [(ngModel)]="newConnection.name" name="name" required>
         </div>
+
+        @if (newConnection.kind === 'rustdesk') {
+        <!-- RustDesk: el ID se guarda en `host` y la contraseña permanente en `password` -->
+        <div class="form-row">
+          <div class="form-group">
+            <label>ID de RustDesk</label>
+            <input type="text" [(ngModel)]="newConnection.host" name="rustdesk_id" required
+              pattern="[A-Za-z0-9_\- ]{3,64}" placeholder="123 456 789" autocomplete="off">
+          </div>
+          <div class="form-group">
+            <label>Sistema (opcional)</label>
+            <select [(ngModel)]="newConnection.remote_os" name="rustdesk_os">
+              <option [ngValue]="null">—</option>
+              @for (os of remoteOsOptions; track os.value) { <option [ngValue]="os.value">{{ os.label }}</option> }
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Contraseña permanente de RustDesk</label>
+          <input type="password" [(ngModel)]="newConnection.password" name="rustdesk_password"
+            placeholder="Vacía = RustDesk la pedirá al conectar" autocomplete="new-password">
+        </div>
+        <div class="form-hint rustdesk-status">
+          @if (!rustdeskStatus) {
+            Comprobando RustDesk en este equipo…
+          } @else if (!rustdeskStatus.installed) {
+            <span class="hint-warn">RustDesk no está instalado en este equipo.</span>
+            Descárgalo de {{ rustdeskStatus.downloadUrl }} y vuelve a intentar.
+          } @else if (rustdeskStatus.server) {
+            <span class="hint-ok">RustDesk instalado · servidor propio: {{ rustdeskStatus.server }}</span>
+          } @else {
+            <span class="hint-warn">RustDesk instalado, pero usa los servidores públicos.</span>
+            Configura tu servidor en RustDesk → Ajustes → Red (ver README).
+          }
+        </div>
+        } @else {
         <div class="form-row">
           <div class="form-group">
             <label>Host / IP</label>
             <input type="text" [(ngModel)]="newConnection.host" name="host" required>
           </div>
           <div class="form-group">
-            <label>Puerto</label>
+            <label>Puerto SSH</label>
             <input type="number" [(ngModel)]="newConnection.port" name="port" required>
           </div>
         </div>
@@ -522,6 +617,7 @@
           <label>Usuario</label>
           <input type="text" [(ngModel)]="newConnection.username" name="username" required>
         </div>
+        }
 
         <div class="form-row">
           <div class="form-group">
@@ -540,6 +636,7 @@
           </div>
         </div>
 
+        @if (newConnection.kind !== 'rustdesk') {
         <div class="form-group">
           <label>Autenticación</label>
           <select [(ngModel)]="newConnection.auth_type" name="auth_type">
@@ -558,6 +655,31 @@
           <input type="text" [(ngModel)]="newConnection.key_path" name="key_path"
             placeholder="C:\Users\...\.ssh\id_rsa">
         </div>
+        }
+
+        @if (newConnection.kind === 'remote') {
+        <fieldset class="remote-fields">
+          <legend>Escritorio remoto (VNC por túnel SSH)</legend>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Sistema del equipo remoto</label>
+              <select [(ngModel)]="newConnection.remote_os" name="remote_os" required>
+                @for (os of remoteOsOptions; track os.value) { <option [ngValue]="os.value">{{ os.label }}</option> }
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Puerto VNC</label>
+              <input type="number" [(ngModel)]="newConnection.vnc_port" name="vnc_port" min="1" max="65535" required>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Contraseña VNC</label>
+            <input type="password" [(ngModel)]="newConnection.vnc_password" name="vnc_password"
+              [placeholder]="newConnection.remote_os === 'mac' ? 'Opcional: vacía = contraseña de la cuenta' : 'Contraseña del servidor VNC'">
+          </div>
+          <p class="form-hint">{{ formRemoteHint }}</p>
+        </fieldset>
+        }
 
         <div class="form-actions">
           <button type="button" (click)="cancelForm()" class="btn-secondary">Cancelar</button>

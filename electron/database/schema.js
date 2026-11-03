@@ -36,6 +36,11 @@ const MIGRATIONS = [
   `ALTER TABLE users ADD COLUMN recovery_pin TEXT;`,
   `ALTER TABLE connections ADD COLUMN project_id TEXT;`,
   `ALTER TABLE connections ADD COLUMN catalog_id TEXT;`,
+  // Escritorio remoto
+  `ALTER TABLE connections ADD COLUMN kind TEXT DEFAULT 'ssh';`,
+  `ALTER TABLE connections ADD COLUMN remote_os TEXT;`,
+  `ALTER TABLE connections ADD COLUMN vnc_port INTEGER DEFAULT 5900;`,
+  `ALTER TABLE connections ADD COLUMN vnc_password TEXT;`,
 ];
 
 module.exports = { SCHEMA, MIGRATIONS };

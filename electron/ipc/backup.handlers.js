@@ -9,7 +9,7 @@ const RESTORE_CHOICE = { REPLACE: 0, MERGE: 1, CANCEL: 2 };
 const CANCELED = { ok: false, canceled: true };
 
 /** Orquesta los diálogos nativos y delega el trabajo en BackupService. */
-function registerBackupHandlers(ipcMain, { app, mainWindow, backupService, sshSessionService, authService }) {
+function registerBackupHandlers(ipcMain, { app, mainWindow, backupService, sshSessionService, sshTunnelService, vncBridgeService, authService }) {
   ipcMain.handle(CH.DB_BACKUP, async () => {
     const { canceled, filePath } = await dialog.showSaveDialog(mainWindow.instance, {
       title: 'Exportar base de datos',
@@ -35,6 +35,8 @@ function registerBackupHandlers(ipcMain, { app, mainWindow, backupService, sshSe
 
     // Las conexiones de las sesiones abiertas pueden dejar de existir
     sshSessionService.closeAll();
+    vncBridgeService.closeAll();
+    sshTunnelService.closeAll();
 
     const mode = choice === RESTORE_CHOICE.REPLACE ? 'replace' : 'merge';
     if (mode === 'replace') backupService.replaceWith(source, safetyPath);

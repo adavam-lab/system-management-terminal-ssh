@@ -15,8 +15,10 @@ class ConnectionRepository {
 
   create(conn) {
     this.db.prepare(`
-      INSERT INTO connections (id, name, host, port, username, auth_type, password, key_path, project_id, catalog_id)
-      VALUES (@id, @name, @host, @port, @username, @auth_type, @password, @key_path, @project_id, @catalog_id)
+      INSERT INTO connections (id, name, host, port, username, auth_type, password, key_path, project_id, catalog_id,
+                               kind, remote_os, vnc_port, vnc_password)
+      VALUES (@id, @name, @host, @port, @username, @auth_type, @password, @key_path, @project_id, @catalog_id,
+              @kind, @remote_os, @vnc_port, @vnc_password)
     `).run(conn);
   }
 
@@ -25,7 +27,8 @@ class ConnectionRepository {
     return this.db.prepare(`
       UPDATE connections
       SET name = @name, host = @host, port = @port, username = @username, auth_type = @auth_type,
-          password = @password, key_path = @key_path, project_id = @project_id, catalog_id = @catalog_id
+          password = @password, key_path = @key_path, project_id = @project_id, catalog_id = @catalog_id,
+          kind = @kind, remote_os = @remote_os, vnc_port = @vnc_port, vnc_password = @vnc_password
       WHERE id = @id
     `).run(conn).changes;
   }

@@ -2,7 +2,15 @@
   "name": "ssh-manager",
   "version": "1.0.2",
   "description": "Aplicación para administrar conexiones SSH",
-  "author": "E. Daniel Valencia - ADAVAM",
+  "author": {
+    "name": "MadXcorp - ADAVAM",
+    "url": "https://www.adavam.com"
+  },
+  "license": "AGPL-3.0-or-later",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/adavam-lab/system-management-terminal-ssh.git"
+  },
   "homepage": "https://www.adavam.com",
   "main": "main.js",
   "scripts": {
@@ -17,8 +25,8 @@
   "packageManager": "npm@11.12.1",
   "build": {
     "appId": "com.ssh-manager.app",
-    "productName": "SSH Manager",
-    "copyright": "Copyright © ADAVAM",
+    "productName": "XSS Manager",
+    "copyright": "Copyright © 2026 MadXcorp - ADAVAM. Licencia AGPL-3.0-or-later",
     "icon": "public/logo-single.png",
     "mac": {
       "icon": "public/logo-single.png",
@@ -42,7 +50,7 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "menuCategory": "ADAVAM",
-      "shortcutName": "SSH Manager",
+      "shortcutName": "XSS Manager",
       "license": "build/license.txt",
       "include": "build/installer.nsh",
       "artifactName": "${productName}-Setup-${version}.${ext}",
@@ -50,7 +58,8 @@
     },
     "files": [
       "**/*",
-      "dist/ssh-manager/**/*"
+      "dist/ssh-manager/**/*",
+      "!rustdesk-server/**/*"
     ]
   },
   "dependencies": {
@@ -60,6 +69,7 @@
     "@angular/forms": "^22.1.0",
     "@angular/platform-browser": "^22.1.0",
     "@angular/router": "^22.1.0",
+    "@novnc/novnc": "^1.7.0",
     "@types/better-sqlite3": "^9.6.0",
     "@xterm/addon-fit": "^0.11.0",
     "@xterm/xterm": "^6.0.0",
@@ -67,7 +77,8 @@
     "better-sqlite3": "^13.0.3",
     "node-pty": "^1.1.0",
     "rxjs": "~7.8.0",
-    "tslib": "^2.3.0"
+    "tslib": "^2.3.0",
+    "ws": "^8.22.1"
   },
   "devDependencies": {
     "@angular/build": "^22.1.7",

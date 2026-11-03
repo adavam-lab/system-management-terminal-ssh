@@ -777,6 +777,16 @@ input:focus, select:focus {
   min-height: 0;
 }
 
+/* Escritorio remoto: el componente ocupa todo el contenedor */
+.remote-container {
+  display: flex;
+  background-color: #000;
+}
+
+.remote-container[hidden] {
+  display: none;
+}
+
 .terminal-container .xterm {
   height: 100%;
   width: 100%;
@@ -1259,4 +1269,84 @@ input:focus, select:focus {
 
 .pm-btn-primary:hover {
   background: #388bfd;
+}
+
+/* ── Escritorio remoto: formulario y sidebar ── */
+.form-container {
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+}
+
+.kind-toggle {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+}
+
+.kind-toggle button {
+  flex: 1;
+  padding: 7px 10px;
+  background: transparent;
+  color: #8b949e;
+  border: none;
+  border-radius: 4px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.kind-toggle button.active {
+  background: #21262d;
+  color: #58a6ff;
+  box-shadow: 0 0 0 1px #30363d;
+}
+
+.remote-fields {
+  margin: 0 0 10px;
+  padding: 12px 14px 4px;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+}
+
+.remote-fields legend {
+  padding: 0 6px;
+  font-size: 12px;
+  color: #8b949e;
+}
+
+.form-hint {
+  margin: 0 0 10px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #8b949e;
+}
+
+.kind-badge {
+  margin-left: 6px;
+  padding: 0 5px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #d29922;
+  border: 1px solid #d2992266;
+  border-radius: 4px;
+  vertical-align: middle;
+}
+
+.kind-badge.kind-rustdesk {
+  color: #3fb950;
+  border-color: #3fb95066;
+}
+
+.rustdesk-status {
+  margin-top: -4px;
+}
+
+.hint-ok {
+  color: #3fb950;
+}
+
+.hint-warn {
+  color: #d29922;
 }

@@ -12,6 +12,9 @@ const { GroupingService } = require('./services/grouping.service');
 const { ConnectionService } = require('./services/connection.service');
 const { SshSessionService } = require('./services/ssh-session.service');
 const { BackupService } = require('./services/backup.service');
+const { SshTunnelService } = require('./services/ssh-tunnel.service');
+const { VncBridgeService } = require('./services/vnc-bridge.service');
+const { RustDeskService } = require('./services/rustdesk.service');
 
 /**
  * Raíz de composición: crea las dependencias y las inyecta (Dependency Inversion).
@@ -35,10 +38,21 @@ function createContainer(app) {
     onData: (id, data) => mainWindow.send(CH.TERMINAL_INCOMING_DATA, { id, data }),
     onExit: (id, exitCode) => mainWindow.send(CH.TERMINAL_EXIT, { id, exitCode }),
   });
+  const rustDeskService = new RustDeskService({ connectionService });
+  const vncBridgeService = new VncBridgeService();
+  const sshTunnelService = new SshTunnelService({
+    connectionService,
+    sshSessionService,
+    onExit: (id, exitCode) => {
+      vncBridgeService.close(id);
+      mainWindow.send(CH.REMOTE_EXIT, { id, exitCode });
+    },
+  });
 
   return {
     app, mainWindow, database,
     authService, groupingService, connectionService, backupService, sshSessionService,
+    sshTunnelService, vncBridgeService, rustDeskService,
   };
 }
 

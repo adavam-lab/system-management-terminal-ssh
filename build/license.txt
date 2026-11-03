@@ -1,22 +1,28 @@
-SSH MANAGER - CONDICIONES DE USO
-=================================
+SSH MANAGER - LICENCIA
+======================
 
-SSH Manager es un producto desarrollado por ADAVAM (E. Daniel Valencia)
-para la administración de conexiones SSH.
+XSS Manager
+Copyright (C) 2026 MadXcorp - ADAVAM
+https://www.adavam.com
+Código fuente: https://github.com/adavam-lab/system-management-terminal-ssh
+
+Este programa es software libre: puede redistribuirlo y/o modificarlo
+bajo los términos de la GNU Affero General Public License publicada por
+la Free Software Foundation, ya sea la versión 3 de la Licencia o
+(a su elección) cualquier versión posterior.
+
+Este programa se distribuye con la esperanza de que sea útil, pero
+SIN NINGUNA GARANTÍA; ni siquiera la garantía implícita de
+COMERCIABILIDAD o IDONEIDAD PARA UN PROPÓSITO PARTICULAR. Consulte la
+GNU Affero General Public License para más detalles:
+https://www.gnu.org/licenses/agpl-3.0.html
+
+Cualquier versión modificada u obra derivada debe distribuirse bajo la
+misma licencia, publicar su código fuente y conservar la atribución:
+"Basado en XSS Manager, creado por MadXcorp - ADAVAM".
 
 Al continuar con la instalación, usted acepta utilizar esta aplicación
 bajo su propia responsabilidad, respetando las políticas de seguridad
 de su organización.
 
----------------------------------------------------------------
-Sobre ADAVAM
----------------------------------------------------------------
-ADAVAM desarrolla herramientas de administración y productividad
-para profesionales de sistemas.
-
-Descubra más productos, soporte y novedades en:
-https://www.adavam.com
-
----------------------------------------------------------------
-
-Haga clic en "Acepto" para continuar con la instalación de SSH Manager.
+Haga clic en "Acepto" para continuar con la instalación de XSS Manager.

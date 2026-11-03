@@ -32,4 +32,12 @@ module.exports = Object.freeze({
   TERMINAL_RESIZE: 'terminal.resize',
   TERMINAL_INCOMING_DATA: 'terminal.incomingData',
   TERMINAL_EXIT: 'terminal.exit',
+
+  REMOTE_START: 'remote:start',
+  REMOTE_STOP: 'remote:stop',
+  REMOTE_STOP_ALL: 'remote:stop-all',
+  REMOTE_EXIT: 'remote:exit',
+
+  RUSTDESK_STATUS: 'rustdesk:status',
+  RUSTDESK_LAUNCH: 'rustdesk:launch',
 });

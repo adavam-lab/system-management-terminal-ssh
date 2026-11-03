@@ -14,6 +14,12 @@ app.on('ready', () => {
   container.mainWindow.create();
 });
 
+// No dejar procesos ssh (túneles de escritorio remoto) vivos al salir
+app.on('before-quit', () => {
+  container.vncBridgeService.closeAll();
+  container.sshTunnelService.closeAll();
+});
+
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });

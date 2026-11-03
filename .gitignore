@@ -42,3 +42,6 @@ __screenshots__/
 # System files
 .DS_Store
 Thumbs.db
+
+# Servidor RustDesk: contiene la llave privada id_ed25519
+rustdesk-server/data/

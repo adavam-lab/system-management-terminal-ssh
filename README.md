@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="public/logo.png" alt="SSH Manager Logo" width="320" />
+  <img src="public/logo.png" alt="XSS Manager Logo" width="320" />
 </p>
 
-<h1 align="center">SSH Manager — ADAVAM</h1>
+<h1 align="center">XSS Manager — ADAVAM</h1>
 
 <p align="center">
   Aplicación de escritorio para gestionar y administrar conexiones SSH de forma segura, con terminal integrada y base de datos local.
@@ -29,18 +29,19 @@
 6. [Arquitectura: cómo viaja una petición](#-arquitectura-cómo-viaja-una-petición)
 7. [Base de datos SQLite](#️-base-de-datos-sqlite)
 8. [Configuración](#-configuración)
-9. [Escritorio remoto (VNC por túnel SSH) — guía de implementación](#️-escritorio-remoto-vnc-por-túnel-ssh--guía-de-implementación)
-10. [Seguridad](#-seguridad)
-11. [Solución de problemas frecuentes](#️-solución-de-problemas-frecuentes)
-12. [Glosario para juniors](#-glosario-para-juniors)
-13. [Licencia](#-licencia)
+9. [Escritorio remoto (VNC por túnel SSH)](#️-escritorio-remoto-vnc-por-túnel-ssh)
+10. [RustDesk (tipo AnyDesk, desde cualquier red)](#-rustdesk-tipo-anydesk-desde-cualquier-red)
+11. [Seguridad](#-seguridad)
+12. [Solución de problemas frecuentes](#️-solución-de-problemas-frecuentes)
+13. [Glosario para juniors](#-glosario-para-juniors)
+14. [Licencia](#-licencia)
 
 ---
 
 ## 📸 Capturas de Pantalla
 
 <p align="center">
-  <img src="public/img-github/slideshow.gif" alt="Recorrido por SSH Manager" width="900" />
+  <img src="public/img-github/slideshow.gif" alt="Recorrido por XSS Manager" width="900" />
 </p>
 
 <details>
@@ -70,7 +71,8 @@
 - 💾 **Respaldo y restauración** de la base de datos
 - ⏱️ **Cierre por inactividad**
 - 📦 **Instaladores nativos** para Windows (`.exe`) y macOS (`.dmg`) con electron-builder
-- 🖥️ **Escritorio remoto VNC por túnel SSH** — *en desarrollo, ver [la guía](#️-escritorio-remoto-vnc-por-túnel-ssh--guía-de-implementación)*
+- 🖥️ **Escritorio remoto** — ver y controlar equipos Windows, macOS o Linux (VNC por túnel SSH, [detalles](#️-escritorio-remoto-vnc-por-túnel-ssh))
+- 🌐 **RustDesk** — acceso tipo AnyDesk desde cualquier red, con servidor propio ([detalles](#-rustdesk-tipo-anydesk-desde-cualquier-red))
 
 ---
 
@@ -104,7 +106,7 @@ Versiones instaladas en el proyecto (`npm ls --depth=0`, octubre 2026).
 | `wait-on` | 9.1.0 | Espera a que Angular esté listo antes de abrir Electron |
 | `vitest` | 4.1.11 | Pruebas unitarias |
 
-### Dependencias para el escritorio remoto (por instalar)
+### Dependencias del escritorio remoto
 
 | Paquete | Versión | Uso |
 |---------|---------|-----|
@@ -155,7 +157,7 @@ npm start
 npm run electron:build
 ```
 
-Genera `SSH Manager-Setup-<versión>.exe` en Windows o `SSH Manager <versión>.dmg` en macOS, dentro de `dist/`.
+Genera `XSS Manager-Setup-<versión>.exe` en Windows o `XSS Manager <versión>.dmg` en macOS, dentro de `dist/`.
 
 ### Scripts disponibles
 
@@ -182,6 +184,7 @@ system-management-terminal-ssh/
 ├── package.json                    # Dependencias, scripts y config de electron-builder
 ├── angular.json                    # Configuración de Angular CLI
 ├── build/                          # Licencia y script NSIS del instalador de Windows
+├── rustdesk-server/                # docker-compose del servidor RustDesk + scripts para PCs remotas
 ├── public/                         # Logos, favicon e imágenes del README
 │
 ├── electron/                       # ===== PROCESO MAIN (Node) =====
@@ -201,6 +204,9 @@ system-management-terminal-ssh/
 │   │   ├── grouping.service.js     # Proyectos y catálogos
 │   │   ├── connection.service.js   # CRUD de conexiones
 │   │   ├── ssh-session.service.js  # Terminal SSH con node-pty
+│   │   ├── ssh-tunnel.service.js   # Túnel ssh -N -L para el escritorio remoto
+│   │   ├── vnc-bridge.service.js   # Puente WebSocket ↔ TCP para noVNC
+│   │   ├── rustdesk.service.js     # Abre el cliente RustDesk con ID y contraseña
 │   │   └── backup.service.js       # Respaldo y restauración
 │   ├── ipc/                        # Conecta canales IPC con servicios
 │   │   ├── channels.js             # Nombres de canales (fuente de verdad)
@@ -210,9 +216,11 @@ system-management-terminal-ssh/
 │
 └── src/
     ├── index.html / main.ts / styles.css
+    ├── types/novnc.d.ts            # Tipos de noVNC
     └── app/                        # ===== PROCESO RENDERER (Angular) =====
         ├── app.ts / app.html / app.css   # Pantalla principal (sidebar + pestañas de terminal)
         ├── login/                  # Pantalla de login / registro / recuperación
+        ├── remote-desktop/         # Pestaña de escritorio remoto (noVNC)
         └── core/
             ├── ipc/
             │   ├── ipc-channels.ts # Copia de channels.js para TypeScript
@@ -296,16 +304,18 @@ Las tablas se definen en `electron/database/schema.js`. Los cambios de columnas 
 |-------|------|-------------|
 | `id` | TEXT (PK) | UUID |
 | `name` | TEXT | Nombre del perfil |
-| `host` | TEXT | IP o hostname del servidor |
+| `host` | TEXT | IP o hostname del servidor (en `rustdesk`: el ID de RustDesk) |
 | `port` | INTEGER | Puerto SSH (default: 22) |
 | `username` | TEXT | Usuario SSH |
 | `auth_type` | TEXT | `password` o `key` |
-| `password` | TEXT | Contraseña (opcional) |
+| `password` | TEXT | Contraseña (opcional; en `rustdesk`: la contraseña permanente) |
 | `key_path` | TEXT | Ruta a llave privada SSH (opcional) |
 | `project_id` | TEXT | Proyecto (opcional) |
 | `catalog_id` | TEXT | Catálogo (opcional) |
-| `vnc_port` | INTEGER | *Por agregar* — puerto VNC remoto (default: 5900) |
-| `vnc_password` | TEXT | *Por agregar* — contraseña VNC (opcional) |
+| `kind` | TEXT | `ssh` (terminal), `remote` (escritorio VNC) o `rustdesk`. Default: `ssh` |
+| `remote_os` | TEXT | `windows`, `mac` o `linux` (para `remote` y, opcional, `rustdesk`) |
+| `vnc_port` | INTEGER | Puerto VNC del equipo remoto (default: 5900) |
+| `vnc_password` | TEXT | Contraseña VNC (opcional) |
 
 ---
 
@@ -322,13 +332,19 @@ Las tablas se definen en `electron/database/schema.js`. Los cambios de columnas 
 | `MIN_PASSWORD_LENGTH` | 8 | Largo mínimo de contraseña |
 | `DEFAULT_SSH_PORT` | 22 | Puerto SSH por defecto |
 | `DEFAULT_TERMINAL_SIZE` | 80 × 30 | Columnas × filas iniciales |
+| `DEFAULT_VNC_PORT` | 5900 | Puerto VNC por defecto |
+| `TUNNEL_READY_TIMEOUT_MS` | 15000 | Espera máxima para que el túnel SSH abra |
+| `CONNECTION_KINDS` | `ssh`, `remote`, `rustdesk` | Tipos de conexión válidos |
+| `RUSTDESK_EXECUTABLES` | rutas por sistema | Dónde se busca el cliente RustDesk local |
+| `RUSTDESK_CONFIG_FILES` | rutas por sistema | `RustDesk2.toml` local, para detectar el servidor propio |
+| `REMOTE_OS` | `windows`, `mac`, `linux` | Sistemas remotos válidos |
 
 ### electron-builder (`package.json` → `build`)
 
 ```json
 "build": {
   "appId": "com.ssh-manager.app",
-  "productName": "SSH Manager",
+  "productName": "XSS Manager",
   "mac": { "target": ["dmg"], "icon": "public/logo-single.png" },
   "win": { "icon": "public/logo-single.png" },
   "nsis": { "oneClick": false, "allowToChangeInstallationDirectory": true }
@@ -346,34 +362,48 @@ Las tablas se definen en `electron/database/schema.js`. Los cambios de columnas 
 
 ---
 
-## 🖥️ Escritorio remoto (VNC por túnel SSH) — guía de implementación
+## 🖥️ Escritorio remoto (VNC por túnel SSH)
 
-> **Estado: en desarrollo.** Esta sección es la guía para construir la funcionalidad. Los archivos marcados como *nuevo* todavía no existen en el repositorio.
+Además de terminales, una conexión puede ser de tipo **Escritorio remoto**: abre una pestaña con la pantalla de un equipo **Windows, macOS o Linux** y te deja controlarlo con mouse y teclado desde el equipo donde está instalado XSS Manager.
 
-### ¿Qué vamos a construir?
+### Cómo usarlo
 
-Un botón **"Escritorio remoto"** en cada conexión guardada que abre una pestaña con la pantalla del otro equipo, con mouse y teclado. Usa el mismo host, usuario y contraseña o llave que ya guarda SSH Manager.
+1. Prepara el equipo remoto una sola vez ([Configurar el equipo remoto](#configurar-el-equipo-remoto)).
+2. En XSS Manager pulsa **+ Conexión** y elige **Tipo de conexión → Escritorio remoto**.
+3. Llena los datos SSH del equipo remoto (host, puerto SSH, usuario y contraseña o llave): son los que abren el túnel.
+4. En el bloque *Escritorio remoto* elige el **sistema** (Windows / macOS / Linux), el **puerto VNC** (5900 por defecto) y la **contraseña VNC**.
+   - En **macOS** puedes dejar vacía la contraseña VNC: se usa la contraseña de la cuenta de Mac.
+5. Guarda y pulsa **Ver escritorio** en la tarjeta (o la conexión en el sidebar).
+
+En la barra de la pestaña tienes:
+
+| Botón | Qué hace |
+|-------|----------|
+| **Ctrl+Alt+Supr** | Lo envía al equipo remoto (Windows/Linux). Tu equipo no lo intercepta. |
+| **Pegar texto** | Envía el texto de tu portapapeles al portapapeles del remoto. |
+| **Solo ver** | Mira la pantalla sin mover el mouse ni teclear en el remoto. |
+| **Reconectar** | Aparece si se cae la conexión. |
+
+El texto que copias en el remoto llega solo a tu portapapeles. La pantalla remota se escala al tamaño de la pestaña y no cambia la resolución del otro equipo. La sesión es **compartida**: no expulsa a quien esté usando el equipo.
 
 ### ¿Por qué VNC por túnel SSH y no algo tipo RustDesk?
 
 | Opción | Qué necesita el equipo remoto | Esfuerzo | Cuándo conviene |
 |--------|-------------------------------|----------|-----------------|
-| **VNC por túnel SSH + noVNC** ✅ | SSH + servidor VNC | Bajo-medio | Ya llegamos al equipo por SSH (LAN, VPN o puerto 22) |
+| **VNC por túnel SSH + noVNC** ✅ (la implementada) | SSH + servidor VNC | Bajo-medio | Ya llegamos al equipo por SSH (LAN, VPN o puerto 22) |
 | Cliente externo (RDP / `vnc://`) | RDP o VNC | Muy bajo | Algo rápido, pero se ve fuera de la app |
 | Estilo RustDesk (P2P, atraviesa NAT) | Un agente propio instalado | Alto (semanas) | Equipos detrás de NAT sin SSH |
 
-Elegimos la primera porque:
-
-- **No abre puertos nuevos.** El VNC remoto solo escucha en `localhost`; el único puerto expuesto sigue siendo el 22.
+- **No abre puertos nuevos:** el VNC remoto escucha solo en `localhost`; el único puerto expuesto sigue siendo el 22.
 - **Todo va cifrado** por SSH (VNC por sí solo cifra mal).
-- **Poco código** y sin servidores propios.
+- **Sin servidores propios** ni agentes que instalar.
 
-**Limitación:** igual que la terminal, el equipo remoto debe ser alcanzable por SSH.
+**Limitación:** igual que la terminal, el equipo remoto debe ser alcanzable por SSH desde tu equipo.
 
 ### Cómo funciona
 
 ```
-┌───────────────────────── SSH Manager (tu equipo) ─────────────────────────┐
+┌───────────────────────── XSS Manager (tu equipo) ─────────────────────────┐
 │                                                                           │
 │  Angular (renderer)              Electron (main)                          │
 │  ┌──────────────────┐  WS   ┌──────────────────┐  TCP  ┌──────────────┐   │
@@ -383,7 +413,7 @@ Elegimos la primera porque:
 │  └──────────────────┘       └──────────────────┘       └──────┬───────┘   │
 │                                                               │           │
 └───────────────────────────────────────────────────────────────┼───────────┘
-                                         túnel cifrado, puerto 22│
+                                        túnel cifrado, puerto 22 │
 ┌──────────────────────── Equipo remoto ────────────────────────┼───────────┐
 │                                   sshd ◄──────────────────────┘           │
 │                                    │                                      │
@@ -391,39 +421,45 @@ Elegimos la primera porque:
 └───────────────────────────────────────────────────────────────────────────┘
 ```
 
-1. Angular llama a `remote:start` con el id de la conexión.
-2. `SshTunnelService` lanza `ssh -N -L 127.0.0.1:<libre>:127.0.0.1:5900 usuario@host` y espera a que el puerto local responda.
-3. `VncBridgeService` abre un servidor WebSocket local con un token aleatorio que reenvía todo al puerto del túnel.
-4. Angular recibe la URL `ws://…` y noVNC dibuja la pantalla remota.
+1. Al abrir la pestaña, `RemoteDesktopComponent` llama al canal IPC `remote:start` con el id de la conexión.
+2. `SshTunnelService` lanza `ssh -N -L 127.0.0.1:<libre>:127.0.0.1:<vnc_port> usuario@host` y espera a que el puerto local responda (ssh solo lo abre después de autenticar).
+3. `VncBridgeService` abre un servidor WebSocket en `127.0.0.1` con un **token aleatorio** que reenvía los bytes al puerto del túnel.
+4. El handler devuelve `{ wsUrl, credentials }` y noVNC dibuja la pantalla remota en un `<canvas>`.
+5. Al cerrar la pestaña, el componente se destruye y llama a `remote:stop`, que cierra el puente y mata el proceso `ssh`.
 
-¿Por qué hace falta el puente? noVNC corre dentro del navegador (renderer) y **solo habla WebSocket**; el servidor VNC habla **TCP**. El puente traduce entre los dos.
+¿Por qué hace falta el puente? noVNC corre en el navegador (renderer) y **solo habla WebSocket**; el servidor VNC habla **TCP**. El puente traduce entre los dos.
 
-### Archivos que se tocan
+### Recorrido por el código
 
-| Archivo | Acción |
-|---------|--------|
-| `electron/config.js` | Cambia — 2 constantes |
-| `electron/database/schema.js` | Cambia — 2 migraciones |
-| `electron/repositories/connection.repository.js` | Cambia — columnas VNC en INSERT/UPDATE |
-| `electron/services/connection.service.js` | Cambia — valores por defecto VNC |
-| `electron/services/ssh-tunnel.service.js` | **Nuevo** |
-| `electron/services/vnc-bridge.service.js` | **Nuevo** |
-| `electron/ipc/channels.js` + `src/app/core/ipc/ipc-channels.ts` | Cambian — 4 canales |
-| `electron/ipc/remote-desktop.handlers.js` | **Nuevo** |
-| `electron/ipc/index.js`, `electron/container.js`, `main.js` | Cambian — registro y limpieza |
-| `src/types/novnc.d.ts` | **Nuevo** |
-| `src/app/core/models/connection.model.ts` | Cambia — campos VNC |
-| `src/app/core/services/remote-desktop.service.ts` | **Nuevo** |
-| `src/app/remote-desktop/remote-desktop.component.ts` | **Nuevo** |
-| `src/app/app.ts` / `app.html` | Cambian — botón y pestaña |
+| Archivo | Qué hace |
+|---------|----------|
+| [`electron/config.js`](electron/config.js) | `DEFAULT_VNC_PORT`, `TUNNEL_READY_TIMEOUT_MS`, `CONNECTION_KINDS`, `REMOTE_OS` |
+| [`electron/database/schema.js`](electron/database/schema.js) | Migraciones: columnas `kind`, `remote_os`, `vnc_port`, `vnc_password` |
+| [`electron/repositories/connection.repository.js`](electron/repositories/connection.repository.js) | Incluye las columnas nuevas en `INSERT` y `UPDATE` |
+| [`electron/services/connection.service.js`](electron/services/connection.service.js) | `normalize()`: valida el sistema remoto y pone valores por defecto |
+| [`electron/services/ssh-tunnel.service.js`](electron/services/ssh-tunnel.service.js) | Abre/cierra el túnel `ssh -N -L`; traduce los errores de ssh a mensajes claros |
+| [`electron/services/vnc-bridge.service.js`](electron/services/vnc-bridge.service.js) | Puente WebSocket ↔ TCP con token por sesión |
+| [`electron/ipc/remote-desktop.handlers.js`](electron/ipc/remote-desktop.handlers.js) | Canales `remote:start`, `remote:stop`, `remote:stop-all`; arma las credenciales VNC |
+| [`electron/container.js`](electron/container.js) | Crea ambos servicios; si el túnel cae, cierra el puente y emite `remote:exit` |
+| [`main.js`](main.js) | `before-quit`: cierra todos los túneles al salir |
+| [`src/types/novnc.d.ts`](src/types/novnc.d.ts) | Tipos TypeScript de la parte de noVNC que usamos |
+| [`src/app/core/services/remote-desktop.service.ts`](src/app/core/services/remote-desktop.service.ts) | Envoltorio Angular de los canales `remote:*` |
+| [`src/app/remote-desktop/remote-desktop.component.ts`](src/app/remote-desktop/remote-desktop.component.ts) | Pantalla remota (noVNC), barra de acciones, pedir contraseña, reconectar |
+| [`src/app/app.ts`](src/app/app.ts) / [`app.html`](src/app/app.html) | Formulario con *Tipo de conexión*, tarjetas y pestañas remotas |
 
----
+Decisiones que conviene entender:
 
-### Parte A — Configurar el equipo remoto
+- **El túnel usa node-pty**, igual que la terminal, para reutilizar `createAutoResponder()` de `SshSessionService` (acepta el fingerprint y escribe la contraseña).
+- **`-o NumberOfPasswordPrompts=1` y `ExitOnForwardFailure=yes`** hacen que ssh termine enseguida si algo falla, en vez de quedarse esperando.
+- **Puertos `0`:** túnel y puente piden al sistema un puerto libre, así puedes abrir varios escritorios a la vez.
+- **Las credenciales VNC** las arma el main: Windows/Linux usan la contraseña VNC; macOS usa la contraseña VNC o, si está vacía, usuario + contraseña de la cuenta (autenticación Apple Remote Desktop).
+- **No se usa `prompt()`**: Electron no lo soporta. Si falta la contraseña, el componente muestra su propio formulario.
 
-El equipo que vamos a ver necesita **un servidor SSH que permita túneles** y **un servidor VNC en el puerto 5900**, idealmente escuchando solo en `localhost`.
+### Configurar el equipo remoto
 
-#### A.1 Permitir túneles en SSH (todos los sistemas)
+El equipo que vas a ver necesita **un servidor SSH que permita túneles** y **un servidor VNC**, idealmente escuchando solo en `localhost`.
+
+#### Permitir túneles en SSH (todos los sistemas)
 
 En `/etc/ssh/sshd_config` (Windows: `C:\ProgramData\ssh\sshd_config`) confirma esta línea y reinicia el servicio SSH:
 
@@ -431,14 +467,28 @@ En `/etc/ssh/sshd_config` (Windows: `C:\ProgramData\ssh\sshd_config`) confirma e
 AllowTcpForwarding yes
 ```
 
-#### A.2 macOS
+#### Windows 10/11
+
+1. Instala y arranca OpenSSH Server (PowerShell como administrador):
+
+   ```powershell
+   Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0
+   Start-Service sshd
+   Set-Service -Name sshd -StartupType Automatic
+   ```
+
+2. Instala **TightVNC Server** (modo servicio) y define una contraseña: es la **Contraseña VNC** de la conexión.
+3. En TightVNC → Configuración → Acceso: marca *"Allow loopback connections"* y *"Allow only loopback connections"*.
+4. En XSS Manager: usuario y contraseña de la cuenta de Windows, sistema **Windows**, puerto VNC **5900**.
+
+#### macOS
 
 1. Ajustes del Sistema → General → Compartir → activa **Sesión remota** (SSH).
 2. En la misma pantalla activa **Compartir pantalla**.
-3. Pulsa la ⓘ de Compartir pantalla → activa *"Los visualizadores VNC pueden controlar la pantalla con contraseña"* y define una contraseña (máximo 8 caracteres).
+3. *(Opcional)* Pulsa la ⓘ de Compartir pantalla → activa *"Los visualizadores VNC pueden controlar la pantalla con contraseña"* y define una contraseña (máximo 8 caracteres). Si no lo haces, deja vacía la **Contraseña VNC** y se usará la de tu cuenta.
 4. macOS escucha en todas las interfaces: bloquea el puerto 5900 en el firewall de la red y conéctate siempre por el túnel.
 
-#### A.3 Linux (sesión X11)
+#### Linux (sesión X11)
 
 ```bash
 sudo apt install x11vnc            # Debian/Ubuntu
@@ -447,25 +497,12 @@ x11vnc -display :0 -localhost -rfbauth ~/.vnc/passwd -forever -shared
 ```
 
 - `-localhost` = solo acepta conexiones del propio equipo (las que llegan por el túnel).
-- Si el escritorio usa **Wayland**, x11vnc no funciona: usa `wayvnc` (Sway/Hyprland) o elige la sesión "Xorg" en la pantalla de login.
-- Servidor sin pantalla física: TigerVNC con `vncserver :1 -localhost yes` (escucha en el puerto 5901; guarda `vnc_port = 5901`).
+- Si el escritorio usa **Wayland**, x11vnc no funciona: usa `wayvnc` (Sway/Hyprland) o elige la sesión "Xorg" en el login.
+- Servidor sin pantalla física: TigerVNC con `vncserver :1 -localhost yes` (puerto **5901**).
 
-#### A.4 Windows 10/11
+#### Comprobar sin XSS Manager
 
-1. Instala OpenSSH Server (PowerShell como administrador):
-
-   ```powershell
-   Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0
-   Start-Service sshd
-   Set-Service -Name sshd -StartupType Automatic
-   ```
-
-2. Instala **TightVNC Server** y define una contraseña.
-3. En TightVNC → Configuración → Acceso: marca *"Allow loopback connections"* y *"Allow only loopback connections"*.
-
-#### A.5 Comprobar antes de programar
-
-Desde tu equipo, valida que el remoto responde por el túnel con cualquier cliente VNC:
+Si algo falla, valida el equipo remoto con un cliente VNC cualquiera:
 
 ```bash
 ssh -N -L 5901:localhost:5900 usuario@IP_REMOTA
@@ -473,486 +510,144 @@ ssh -N -L 5901:localhost:5900 usuario@IP_REMOTA
 open vnc://localhost:5901
 ```
 
-Si ves la pantalla, el equipo remoto está listo.
+Si así se ve la pantalla, el problema está en la configuración de la conexión en XSS Manager.
 
----
-
-### Parte B — Implementación paso a paso
-
-Primero el backend (pasos 1–6), que se puede probar solo; después Angular (pasos 7–9). **Haz un commit por paso.**
-
-#### Paso 1. Instalar dependencias
-
-```bash
-npm install @novnc/novnc@1.7.0 ws@8.22.1
-```
-
-#### Paso 2. Configuración — `electron/config.js`
-
-Agrega dentro del `Object.freeze({ … })`:
-
-```js
-  DEFAULT_VNC_PORT: 5900,
-  TUNNEL_READY_TIMEOUT_MS: 15000,
-```
-
-#### Paso 3. Base de datos
-
-En `electron/database/schema.js`, agrega al **final** del arreglo `MIGRATIONS`:
-
-```js
-  `ALTER TABLE connections ADD COLUMN vnc_port INTEGER DEFAULT 5900;`,
-  `ALTER TABLE connections ADD COLUMN vnc_password TEXT;`,
-```
-
-En `electron/repositories/connection.repository.js` agrega las columnas al `INSERT` y al `UPDATE`:
-
-```js
-  create(conn) {
-    this.db.prepare(`
-      INSERT INTO connections (id, name, host, port, username, auth_type, password, key_path,
-                               project_id, catalog_id, vnc_port, vnc_password)
-      VALUES (@id, @name, @host, @port, @username, @auth_type, @password, @key_path,
-              @project_id, @catalog_id, @vnc_port, @vnc_password)
-    `).run(conn);
-  }
-
-  update(conn) {
-    return this.db.prepare(`
-      UPDATE connections
-      SET name = @name, host = @host, port = @port, username = @username, auth_type = @auth_type,
-          password = @password, key_path = @key_path, project_id = @project_id, catalog_id = @catalog_id,
-          vnc_port = @vnc_port, vnc_password = @vnc_password
-      WHERE id = @id
-    `).run(conn).changes;
-  }
-```
-
-> ⚠️ better-sqlite3 lanza **`Missing named parameter`** si el objeto no trae alguna llave. En `ConnectionService`, antes de llamar al repositorio, completa los valores por defecto:
->
-> ```js
-> const data = { ...conn, vnc_port: conn.vnc_port ?? 5900, vnc_password: conn.vnc_password ?? null };
-> ```
-
-#### Paso 4. Servicio del túnel — `electron/services/ssh-tunnel.service.js` (nuevo)
-
-Lanza `ssh -N -L` (túnel sin terminal) con node-pty, igual que la terminal, para reutilizar el auto-responder que acepta el fingerprint y escribe la contraseña.
-
-```js
-const net = require('net');
-const pty = require('node-pty');
-const config = require('../config');
-
-/** Abre un túnel SSH por conexión: 127.0.0.1:<libre> → remoto:127.0.0.1:<vnc_port> */
-class SshTunnelService {
-  constructor({ connectionService, sshSessionService, onExit }) {
-    this.connectionService = connectionService;
-    this.ssh = sshSessionService; // reutilizamos buildSshArgs, sshBinary y createAutoResponder
-    this.onExit = onExit;
-    this.tunnels = new Map(); // connectionId → { proc, localPort }
-  }
-
-  async open(connectionId) {
-    const existing = this.tunnels.get(connectionId);
-    if (existing) return existing.localPort;
-
-    const conn = this.connectionService.getById(connectionId);
-    if (!conn) throw new Error('Conexión no encontrada');
-
-    const localPort = await getFreePort();
-    const remotePort = conn.vnc_port || config.DEFAULT_VNC_PORT;
-    const args = [
-      '-N',                                              // no abrir shell
-      '-L', `127.0.0.1:${localPort}:127.0.0.1:${remotePort}`,
-      '-o', 'ExitOnForwardFailure=yes',                  // si el túnel falla, ssh termina
-      '-o', 'ServerAliveInterval=30',                    // detecta conexiones muertas
-      ...this.ssh.buildSshArgs(conn),                    // -i, -p y usuario@host (siempre al final)
-    ];
-
-    const proc = pty.spawn(this.ssh.sshBinary(), args, {
-      name: 'xterm', cols: 80, rows: 24,
-      cwd: process.env.HOME || process.env.USERPROFILE,
-      env: process.env,
-      useConpty: false,
-    });
-    this.tunnels.set(connectionId, { proc, localPort });
-    proc.onData(this.ssh.createAutoResponder(conn, proc));
-    proc.onExit(({ exitCode }) => {
-      if (this.tunnels.get(connectionId)?.proc !== proc) return; // se cerró a mano
-      this.tunnels.delete(connectionId);
-      this.onExit(connectionId, exitCode);
-    });
-
-    try {
-      await waitForPort(localPort, config.TUNNEL_READY_TIMEOUT_MS,
-        () => this.tunnels.get(connectionId)?.proc === proc);
-    } catch (err) {
-      this.close(connectionId);
-      throw err;
-    }
-    return localPort;
-  }
-
-  close(connectionId) {
-    const tunnel = this.tunnels.get(connectionId);
-    if (!tunnel) return true;
-    this.tunnels.delete(connectionId);
-    try { tunnel.proc.kill(); } catch { /* ya terminó */ }
-    return true;
-  }
-
-  closeAll() {
-    for (const id of [...this.tunnels.keys()]) this.close(id);
-    return true;
-  }
-}
-
-/** Pide al sistema un puerto libre (puerto 0) y lo libera */
-function getFreePort() {
-  return new Promise((resolve, reject) => {
-    const srv = net.createServer();
-    srv.on('error', reject);
-    srv.listen(0, '127.0.0.1', () => {
-      const { port } = srv.address();
-      srv.close(() => resolve(port));
-    });
-  });
-}
-
-/** Reintenta conectar al puerto local hasta que ssh lo abra (= ya autenticó) */
-function waitForPort(port, timeoutMs, isAlive) {
-  const deadline = Date.now() + timeoutMs;
-  return new Promise((resolve, reject) => {
-    const attempt = () => {
-      if (!isAlive()) return reject(new Error('SSH terminó: revisa usuario, contraseña o AllowTcpForwarding'));
-      const sock = net.connect(port, '127.0.0.1');
-      sock.once('connect', () => { sock.destroy(); resolve(); });
-      sock.once('error', () => {
-        sock.destroy();
-        if (Date.now() > deadline) reject(new Error('El túnel SSH no respondió a tiempo'));
-        else setTimeout(attempt, 300);
-      });
-    };
-    attempt();
-  });
-}
-
-module.exports = { SshTunnelService };
-```
-
-#### Paso 5. Puente WebSocket ↔ TCP — `electron/services/vnc-bridge.service.js` (nuevo)
-
-Cada sesión tiene su propio puerto y un **token aleatorio** para que ningún otro programa del equipo pueda conectarse al puente.
-
-```js
-const crypto = require('crypto');
-const net = require('net');
-const { WebSocketServer } = require('ws');
-
-class VncBridgeService {
-  constructor() {
-    this.bridges = new Map(); // connectionId → WebSocketServer
-  }
-
-  /** @returns {Promise<string>} URL ws:// que usará noVNC */
-  open(connectionId, tcpPort) {
-    this.close(connectionId);
-    const token = crypto.randomBytes(24).toString('hex');
-
-    return new Promise((resolve, reject) => {
-      const wss = new WebSocketServer({
-        host: '127.0.0.1',
-        port: 0, // puerto libre
-        verifyClient: ({ req }) => new URL(req.url, 'http://localhost').searchParams.get('token') === token,
-        handleProtocols: protocols => (protocols.has('binary') ? 'binary' : false),
-      });
-
-      wss.on('connection', ws => {
-        const tcp = net.connect(tcpPort, '127.0.0.1');
-        const end = () => { tcp.destroy(); ws.terminate(); };
-        ws.on('message', data => { if (!tcp.destroyed) tcp.write(data); });
-        tcp.on('data', chunk => { if (ws.readyState === ws.OPEN) ws.send(chunk); });
-        ws.on('close', end);
-        ws.on('error', end);
-        tcp.on('close', end);
-        tcp.on('error', end);
-      });
-
-      wss.once('listening', () => {
-        this.bridges.set(connectionId, wss);
-        resolve(`ws://127.0.0.1:${wss.address().port}/?token=${token}`);
-      });
-      wss.once('error', reject);
-    });
-  }
-
-  close(connectionId) {
-    const wss = this.bridges.get(connectionId);
-    if (!wss) return;
-    this.bridges.delete(connectionId);
-    for (const client of wss.clients) client.terminate();
-    wss.close();
-  }
-
-  closeAll() {
-    for (const id of [...this.bridges.keys()]) this.close(id);
-  }
-}
-
-module.exports = { VncBridgeService };
-```
-
-#### Paso 6. IPC, contenedor y limpieza
-
-**6.1 Canales** — agrégalos en `electron/ipc/channels.js` **y**, con el mismo texto, en `src/app/core/ipc/ipc-channels.ts`:
-
-```js
-  REMOTE_START: 'remote:start',
-  REMOTE_STOP: 'remote:stop',
-  REMOTE_STOP_ALL: 'remote:stop-all',
-  REMOTE_EXIT: 'remote:exit',
-```
-
-**6.2 Handlers** — `electron/ipc/remote-desktop.handlers.js` (nuevo):
-
-```js
-const CH = require('./channels');
-
-function registerRemoteDesktopHandlers(ipcMain, { connectionService, sshTunnelService, vncBridgeService }) {
-  ipcMain.handle(CH.REMOTE_START, async (_e, connectionId) => {
-    const localPort = await sshTunnelService.open(connectionId);
-    try {
-      const wsUrl = await vncBridgeService.open(connectionId, localPort);
-      const conn = connectionService.getById(connectionId);
-      return { wsUrl, vncPassword: conn.vnc_password || '' };
-    } catch (err) {
-      sshTunnelService.close(connectionId);
-      throw err;
-    }
-  });
-
-  ipcMain.handle(CH.REMOTE_STOP, (_e, connectionId) => {
-    vncBridgeService.close(connectionId);
-    return sshTunnelService.close(connectionId);
-  });
-
-  ipcMain.handle(CH.REMOTE_STOP_ALL, () => {
-    vncBridgeService.closeAll();
-    return sshTunnelService.closeAll();
-  });
-}
-
-module.exports = { registerRemoteDesktopHandlers };
-```
-
-Regístralo en `electron/ipc/index.js` junto a los demás:
-
-```js
-const { registerRemoteDesktopHandlers } = require('./remote-desktop.handlers');
-// …dentro de registerIpcHandlers:
-registerRemoteDesktopHandlers(ipcMain, container);
-```
-
-**6.3 Contenedor** — en `electron/container.js`, después de crear `sshSessionService`:
-
-```js
-const { SshTunnelService } = require('./services/ssh-tunnel.service');
-const { VncBridgeService } = require('./services/vnc-bridge.service');
-
-// …dentro de createContainer, después de sshSessionService:
-const vncBridgeService = new VncBridgeService();
-const sshTunnelService = new SshTunnelService({
-  connectionService,
-  sshSessionService,
-  onExit: (id, exitCode) => {
-    vncBridgeService.close(id);
-    mainWindow.send(CH.REMOTE_EXIT, { id, exitCode });
-  },
-});
-
-// y agrégalos al objeto que se devuelve:
-return {
-  app, mainWindow, database,
-  authService, groupingService, connectionService, backupService, sshSessionService,
-  sshTunnelService, vncBridgeService,
-};
-```
-
-**6.4 Limpieza al salir** — en `main.js`, para no dejar procesos `ssh` vivos:
-
-```js
-app.on('before-quit', () => {
-  container.vncBridgeService.closeAll();
-  container.sshTunnelService.closeAll();
-});
-```
-
-**Prueba del backend:** con `npm start` abierto, desde DevTools de la ventana (Ctrl/Cmd+Shift+I) ejecuta:
-
-```js
-await require('electron').ipcRenderer.invoke('remote:start', '<id-de-una-conexión>')
-// → { wsUrl: 'ws://127.0.0.1:5xxxx/?token=…', vncPassword: '…' }
-```
-
-#### Paso 7. Tipos y servicio Angular
-
-noVNC no trae tipos de TypeScript. Crea `src/types/novnc.d.ts`:
-
-```ts
-declare module '@novnc/novnc';
-```
-
-En `src/app/core/models/connection.model.ts` agrega a la interfaz `Connection`:
-
-```ts
-  vnc_port?: number;
-  vnc_password?: string | null;
-```
-
-Crea `src/app/core/services/remote-desktop.service.ts`, con el mismo estilo que `ssh.service.ts`:
-
-```ts
-import { Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
-import { IpcService } from '../ipc/ipc.service';
-import { IpcChannels } from '../ipc/ipc-channels';
-
-export interface RemoteSession { wsUrl: string; vncPassword: string; }
-export interface RemoteExit { id: string; exitCode: number; }
-
-/** Canal de comunicación con los túneles VNC del proceso principal */
-@Injectable({ providedIn: 'root' })
-export class RemoteDesktopService {
-  readonly exit$: Observable<RemoteExit>;
-
-  constructor(private ipc: IpcService) {
-    this.exit$ = ipc.on<RemoteExit>(IpcChannels.REMOTE_EXIT);
-  }
-
-  start(connectionId: string): Promise<RemoteSession> {
-    return this.ipc.invoke<RemoteSession>(IpcChannels.REMOTE_START, connectionId);
-  }
-
-  stop(connectionId: string): Promise<boolean> {
-    return this.ipc.invoke<boolean>(IpcChannels.REMOTE_STOP, connectionId);
-  }
-
-  stopAll(): Promise<boolean> {
-    return this.ipc.invoke<boolean>(IpcChannels.REMOTE_STOP_ALL);
-  }
-}
-```
-
-#### Paso 8. Componente — `src/app/remote-desktop/remote-desktop.component.ts` (nuevo)
-
-```ts
-import { AfterViewInit, Component, DestroyRef, ElementRef, OnDestroy,
-         inject, input, signal, viewChild } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import RFB from '@novnc/novnc';
-import { RemoteDesktopService } from '../core/services/remote-desktop.service';
-
-@Component({
-  selector: 'app-remote-desktop',
-  template: `
-    <div class="rd-toolbar">
-      <span>{{ status() }}</span>
-      <button type="button" (click)="sendCtrlAltDel()">Ctrl+Alt+Supr</button>
-      <button type="button" (click)="disconnect()">Desconectar</button>
-    </div>
-    <div #screen class="rd-screen"></div>
-  `,
-  styles: [`
-    :host { display: flex; flex-direction: column; height: 100%; }
-    .rd-toolbar { display: flex; gap: 8px; align-items: center; padding: 6px; }
-    .rd-screen { flex: 1; background: #000; overflow: hidden; }
-  `],
-})
-export class RemoteDesktopComponent implements AfterViewInit, OnDestroy {
-  readonly connectionId = input.required<string>();
-  readonly status = signal('Conectando…');
-
-  private readonly screen = viewChild.required<ElementRef<HTMLDivElement>>('screen');
-  private readonly remote = inject(RemoteDesktopService);
-  private rfb: any = null;
-
-  constructor() {
-    // Si el túnel SSH se cae, lo mostramos en pantalla
-    this.remote.exit$
-      .pipe(takeUntilDestroyed(inject(DestroyRef)))
-      .subscribe(({ id }) => {
-        if (id === this.connectionId()) this.status.set('El túnel SSH se cerró');
-      });
-  }
-
-  async ngAfterViewInit() {
-    try {
-      const { wsUrl, vncPassword } = await this.remote.start(this.connectionId());
-      this.rfb = new RFB(this.screen().nativeElement, wsUrl, {
-        wsProtocols: ['binary'],
-        credentials: { password: vncPassword },
-      });
-      this.rfb.scaleViewport = true;   // ajusta la pantalla remota al tamaño de la pestaña
-      this.rfb.resizeSession = false;  // no cambia la resolución del equipo remoto
-      this.rfb.addEventListener('connect', () => this.status.set('Conectado'));
-      this.rfb.addEventListener('disconnect', (e: any) =>
-        this.status.set(e.detail.clean ? 'Desconectado' : 'Se perdió la conexión'));
-      this.rfb.addEventListener('credentialsrequired', () =>
-        this.status.set('Falta la contraseña VNC: edítala en la conexión'));
-      this.rfb.addEventListener('securityfailure', () =>
-        this.status.set('Contraseña VNC incorrecta'));
-    } catch (err) {
-      this.status.set('Error: ' + (err instanceof Error ? err.message : String(err)));
-    }
-  }
-
-  sendCtrlAltDel() {
-    this.rfb?.sendCtrlAltDel();
-  }
-
-  disconnect() {
-    this.rfb?.disconnect();
-    this.rfb = null;
-    this.remote.stop(this.connectionId());
-  }
-
-  ngOnDestroy() {
-    this.disconnect();
-  }
-}
-```
-
-> No uses `prompt()` para pedir la contraseña: Electron no lo soporta y devuelve `null`.
-
-#### Paso 9. Conectarlo a la pantalla principal (`app.ts` / `app.html`)
-
-1. Importa `RemoteDesktopComponent` en el arreglo `imports` del componente `App`.
-2. En el menú de cada conexión del sidebar agrega un botón **"Escritorio remoto"** que abra una pestaña de tipo `'remote'` (las de terminal serán `'ssh'`).
-3. Donde hoy se pintan los `terminal-container`, pinta el componente para las pestañas remotas:
-
-   ```html
-   @if (tab.type === 'remote') {
-     <app-remote-desktop [connectionId]="tab.connectionId" />
-   }
-   ```
-
-4. En el formulario de conexión agrega los campos **"Puerto VNC"** (número, 5900 por defecto) y **"Contraseña VNC"**.
-5. Igual que con `closeAll()` de la terminal, llama a `remoteDesktopService.stopAll()` al arrancar la app para cerrar túneles huérfanos tras recargar la ventana.
-
----
-
-### Parte C — Pruebas
+### Pruebas manuales
 
 | # | Prueba | Resultado esperado |
 |---|--------|--------------------|
-| 1 | Abrir escritorio remoto con datos correctos | Estado "Conectado" y se ve la pantalla |
-| 2 | Contraseña SSH incorrecta | "SSH terminó: revisa usuario, contraseña…" en menos de 15 s |
-| 3 | VNC apagado en el remoto | "Se perdió la conexión" |
-| 4 | Contraseña VNC incorrecta | "Contraseña VNC incorrecta" |
-| 5 | Cerrar la pestaña | No queda ningún proceso `ssh -N` (`ps aux \| grep "ssh -N"`) |
-| 6 | Cerrar la app con sesiones abiertas | No queda ningún proceso `ssh -N` |
-| 7 | Desconectar la red del remoto | En ~60 s aparece "El túnel SSH se cerró" |
-| 8 | Abrir terminal y escritorio de la misma conexión | Ambos funcionan a la vez |
+| 1 | Abrir escritorio con datos correctos | Punto verde "Conectado" y se ve la pantalla |
+| 2 | Contraseña SSH incorrecta | "SSH rechazó el usuario, la contraseña o la llave." |
+| 3 | Host apagado o IP errónea | "No se pudo alcanzar el equipo remoto…" |
+| 4 | VNC apagado en el remoto | "Se perdió la conexión con el servidor VNC…" + botón Reconectar |
+| 5 | Contraseña VNC incorrecta | "Contraseña VNC rechazada" |
+| 6 | Contraseña VNC vacía (Windows) | Formulario "El equipo remoto pide la contraseña VNC" |
+| 7 | Cerrar la pestaña o la app | No queda ningún `ssh -N` (`ps aux \| grep "ssh -N"`) |
+| 8 | Abrir terminal y escritorio a la vez | Ambas pestañas funcionan |
+| 9 | Desconectar la red del remoto | En ~60 s: "El túnel SSH se cerró" |
+
+---
+
+## 🌐 RustDesk (tipo AnyDesk, desde cualquier red)
+
+El escritorio VNC necesita que llegues a la PC por SSH (misma red o VPN). **RustDesk no**: la PC remota y la tuya se conectan *hacia afuera* a un servidor intermedio, así que funciona aunque estén detrás de NAT, en otra ciudad o sin VPN. Es lo mismo que hacen AnyDesk o TeamViewer, pero open source y con **servidor propio**.
+
+XSS Manager guarda el **ID** y la **contraseña** de cada equipo y, al pulsar **Abrir RustDesk**, lanza el cliente RustDesk de tu PC ya conectado a ese equipo.
+
+### Piezas
+
+```
+   Tu PC (XSS Manager + RustDesk)                        PC remota (RustDesk como servicio)
+   ┌─────────────────────────────┐                       ┌─────────────────────────────┐
+   │ "Abrir RustDesk"            │                       │ ID 123 456 789              │
+   │  → rustdesk --connect <ID>  │                       │ contraseña permanente       │
+   │       --password <clave>    │                       │                             │
+   └──────────────┬──────────────┘                       └──────────────┬──────────────┘
+                  │ 1. ¿dónde está el ID 123456789?                      │ registra su ID
+                  └──────────────►┌───────────────────────────┐◄────────┘
+                                  │ Servidor propio (Docker)  │
+                                  │ hbbs :21115-21116  (IDs)  │
+                                  │ hbbr :21117      (relay)  │
+                                  └───────────────────────────┘
+                  2. conexión directa P2P cifrada; si no se puede, pasa por hbbr
+```
+
+| Pieza | Dónde | Qué es |
+|-------|-------|--------|
+| **hbbs / hbbr** | Un servidor con IP pública (VPS o equipo de la oficina con puertos abiertos) | Servidor RustDesk OSS: directorio de IDs + relay |
+| **Cliente RustDesk "controlador"** | Tu PC, donde está XSS Manager | La ventana que muestra la pantalla remota |
+| **Cliente RustDesk "controlado"** | Cada PC Windows / Mac / Linux | Servicio que comparte la pantalla con contraseña permanente |
+| **XSS Manager** | Tu PC | Guarda ID + contraseña y abre RustDesk conectado |
+
+> Puedes saltarte el servidor propio y usar los servidores públicos de RustDesk para probar, pero son lentos y compartidos. Para trabajo real, usa el tuyo.
+
+### Paso 1 — Levantar el servidor (una vez)
+
+En un servidor Linux con Docker y una IP pública (o un dominio, ej. `rd.miempresa.com`):
+
+```bash
+# copia la carpeta rustdesk-server/ del repositorio al servidor
+cd rustdesk-server
+docker compose up -d
+cat data/id_ed25519.pub     # ← la CLAVE pública; la necesitan todos los clientes
+```
+
+Abre en el firewall / router: **21115/tcp, 21116/tcp, 21116/udp, 21117/tcp**.
+
+> ⚠️ `data/id_ed25519` es la llave **privada** del servidor: no la compartas ni la subas a git (ya está en `.gitignore`).
+
+Versiones: imagen `rustdesk/rustdesk-server:1.1.16`, cliente RustDesk **1.5.0** (mínimo recomendado 1.4.x).
+
+### Paso 2 — Preparar cada PC remota (una vez por equipo)
+
+Usa los scripts de [`rustdesk-server/scripts/`](rustdesk-server/scripts/). Instalan RustDesk (Windows/Linux), configuran tu servidor y la clave, fijan una contraseña permanente e imprimen el **ID**.
+
+**Windows** (PowerShell como administrador):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\instalar-windows.ps1 `
+  -Servidor rd.miempresa.com -Clave "CLAVE_DE_id_ed25519.pub" -Contrasena "UnaClaveLarga2026"
+```
+
+**Linux** (Debian/Ubuntu):
+
+```bash
+sudo ./instalar-linux.sh rd.miempresa.com "CLAVE_DE_id_ed25519.pub" "UnaClaveLarga2026"
+```
+
+**macOS** — macOS no deja conceder permisos de pantalla por script, así que primero a mano:
+
+1. `brew install --cask rustdesk` (o el `.dmg` de [GitHub](https://github.com/rustdesk/rustdesk/releases/latest)).
+2. Abre RustDesk y concede **Grabación de pantalla** y **Accesibilidad** en Ajustes del Sistema → Privacidad y seguridad.
+3. En RustDesk: menú → **Instalar servicio**.
+4. Luego: `sudo ./configurar-mac.sh rd.miempresa.com "CLAVE_DE_id_ed25519.pub" "UnaClaveLarga2026"`
+
+Anota el **ID** que imprime el script.
+
+**Sin scripts (manual, cualquier sistema):** RustDesk → Ajustes → **Red** → *Servidor de ID* = tu servidor, *Key* = la clave → Ajustes → **Seguridad** → *Contraseña permanente*. El ID aparece en la pantalla principal.
+
+### Paso 3 — Configurar tu PC (la que controla)
+
+1. Instala RustDesk en la PC donde usas XSS Manager.
+2. RustDesk → Ajustes → **Red**: el mismo *Servidor de ID* y la misma *Key* del paso 1.
+
+El formulario de XSS Manager te avisa si RustDesk no está instalado o si todavía usa los servidores públicos.
+
+### Paso 4 — Crear la conexión en XSS Manager
+
+1. **+ Conexión** → *Tipo de conexión* → **RustDesk**.
+2. Nombre, **ID de RustDesk** (con o sin espacios), sistema (opcional) y **contraseña permanente**.
+3. Guarda y pulsa **Abrir RustDesk**.
+
+Si dejas la contraseña vacía, RustDesk la pedirá al conectar.
+
+### Código
+
+| Archivo | Qué hace |
+|---------|----------|
+| [`electron/services/rustdesk.service.js`](electron/services/rustdesk.service.js) | Busca el ejecutable de RustDesk, lee si el cliente usa servidor propio y lanza `--connect <ID> --password <clave>` |
+| [`electron/ipc/rustdesk.handlers.js`](electron/ipc/rustdesk.handlers.js) | Canales `rustdesk:status` y `rustdesk:launch` |
+| [`electron/services/connection.service.js`](electron/services/connection.service.js) | `normalizeRustDesk()`: valida el ID y lo guarda en `host`; la contraseña va en `password` |
+| [`electron/config.js`](electron/config.js) | `RUSTDESK_EXECUTABLES` y `RUSTDESK_CONFIG_FILES` por sistema |
+| [`src/app/core/services/rustdesk.service.ts`](src/app/core/services/rustdesk.service.ts) | Envoltorio Angular de los canales |
+| [`rustdesk-server/`](rustdesk-server/) | `docker-compose.yml` del servidor y scripts para preparar PCs remotas |
+
+Decisiones:
+
+- **El ID se guarda en `host` y la contraseña en `password`**: así no cambia la tabla (esas columnas son `NOT NULL`) y "Copiar clave" funciona igual.
+- **Se usa el cliente oficial** en vez de reimplementar el protocolo: RustDesk ya resuelve P2P, NAT, cifrado y relay.
+- Rutas donde se busca RustDesk: macOS `/Applications/RustDesk.app`, Windows `C:\Program Files\RustDesk\rustdesk.exe`, Linux `/usr/bin/rustdesk`.
+- La ventana de RustDesk es independiente: no ocupa una pestaña y sigue abierta aunque cierres XSS Manager.
+
+### ¿VNC o RustDesk?
+
+| | Escritorio (VNC) | RustDesk |
+|--|------------------|----------|
+| Requiere llegar por SSH (red/VPN) | Sí | No |
+| Requiere servidor propio | No | Recomendado |
+| Se ve dentro de XSS Manager | Sí (pestaña) | No (ventana de RustDesk) |
+| Instalar en la PC remota | sshd + servidor VNC | Cliente RustDesk |
+| Transferencia de archivos, audio, multi-monitor | No | Sí |
 
 ---
 
@@ -960,12 +655,16 @@ export class RemoteDesktopComponent implements AfterViewInit, OnDestroy {
 
 - Las contraseñas de usuario se almacenan con **bcryptjs** (salt rounds = 10).
 - La base de datos SQLite es **local** y no se transmite a ningún servidor.
-- Las contraseñas SSH (y VNC) se guardan en **texto plano** en SQLite — se recomienda usar **llaves SSH** en producción.
+- Las contraseñas SSH y VNC se guardan en **texto plano** en SQLite — se recomienda usar **llaves SSH** en producción.
 - **Escritorio remoto:**
   - El servidor VNC remoto debe escuchar **solo en `localhost`** (`-localhost`, "only loopback"). Nunca expongas el puerto 5900 a internet.
   - El túnel y el puente escuchan solo en `127.0.0.1`, nunca en `0.0.0.0`.
   - Cada puente usa un **token aleatorio** por sesión; no lo registres en logs.
   - Cierra siempre túnel y puente juntos (`REMOTE_STOP`) para no dejar puertos abiertos.
+- **RustDesk:**
+  - Usa **servidor propio** y una **contraseña permanente larga y distinta** por equipo.
+  - `rustdesk-server/data/id_ed25519` es la llave privada del servidor: no la compartas.
+  - Al abrir una conexión, la contraseña viaja como argumento de `rustdesk --password`, por lo que es visible un instante en la lista de procesos de **tu** equipo.
 - La ventana usa `nodeIntegration: true` y `contextIsolation: false` (ver `electron/window.js`). Es una simplificación: lo recomendable a futuro es `contextIsolation: true` con un `preload.js`.
 
 ---
@@ -984,14 +683,26 @@ Las respuestas IPC llegan fuera del ciclo de detección de cambios de Angular, y
 
 | Síntoma | Causa probable | Solución |
 |---------|----------------|----------|
-| "El túnel SSH no respondió a tiempo" | Host inalcanzable o SSH lento | Prueba `ssh usuario@host` en una terminal |
-| "SSH terminó…" al instante | Contraseña/llave incorrecta o `AllowTcpForwarding no` | Revisa la Parte A.1 |
-| Pantalla negra, estado "Conectando…" | Servidor VNC apagado o en otro puerto | Revisa `vnc_port`; en Linux confirma que `x11vnc` sigue corriendo |
+| "SSH rechazó el usuario, la contraseña o la llave." | Credenciales SSH erróneas | Prueba `ssh usuario@host` en una terminal |
+| "El equipo remoto no permite túneles…" | `AllowTcpForwarding no` en el remoto | [Permitir túneles en SSH](#permitir-túneles-en-ssh-todos-los-sistemas) |
+| "El equipo remoto rechazó la conexión SSH…" | Servicio SSH apagado (en Windows: `sshd`) | Arráncalo; en Windows `Start-Service sshd` |
+| "El túnel SSH no respondió a tiempo" | Red lenta o SSH colgado | Revisa la red; prueba `ssh usuario@host` |
+| "Se perdió la conexión con el servidor VNC…" | VNC apagado o en otro puerto | Revisa el *Puerto VNC*; en Linux confirma que `x11vnc` sigue corriendo |
+| "Contraseña VNC rechazada" | Contraseña VNC errónea | Edita la conexión; en macOS prueba dejarla vacía (usa la de la cuenta) |
 | `x11vnc` no arranca en Linux | El escritorio usa Wayland | Usa `wayvnc` o la sesión "Xorg" |
-| Se ve, pero no responde mouse/teclado | macOS sin permiso de control | Activa *"…pueden controlar la pantalla"* (Parte A.2) |
-| `Missing named parameter "vnc_port"` | El objeto no trae los campos VNC | Defaults en `ConnectionService` (Paso 3) |
-| `Cannot find module '@novnc/novnc'` en TS | Falta la declaración de tipos | Crea `src/types/novnc.d.ts` (Paso 7) |
-| Muy lento | Red lenta o resolución alta | Baja la resolución remota; `rfb.qualityLevel = 4` y `rfb.compressionLevel = 6` |
+| Se ve, pero no responde mouse/teclado | Botón *Solo ver* activo, o macOS sin permiso de control | Desactiva *Solo ver*; en macOS revisa *Compartir pantalla* |
+| Muy lento | Red lenta o resolución alta | Baja la resolución del equipo remoto |
+
+### RustDesk
+
+| Síntoma | Causa probable | Solución |
+|---------|----------------|----------|
+| "RustDesk no está instalado en este equipo" | Falta el cliente en tu PC | Instálalo de [GitHub](https://github.com/rustdesk/rustdesk/releases/latest) |
+| RustDesk abre pero dice *ID does not exist* | La PC remota está apagada, sin internet o registrada en otro servidor | Revisa que ambas usen el mismo *Servidor de ID* y *Key* |
+| *Key mismatch* | La clave del cliente no coincide con `id_ed25519.pub` | Copia la clave exacta del servidor en ambos lados |
+| Conecta pero va muy lento | Va por relay (hbbr) | Abre 21116/udp en el servidor; revisa el ancho de banda del servidor |
+| Pantalla negra en Mac remota | Faltan permisos | Concede *Grabación de pantalla* y *Accesibilidad* a RustDesk |
+| No controla la PC Linux | Sesión Wayland | Inicia sesión en *Xorg* |
 
 ---
 
@@ -1012,10 +723,24 @@ Las respuestas IPC llegan fuera del ciclo de detección de cambios de Angular, y
 | **Puerto 0** | Pedirle al sistema operativo "dame cualquier puerto libre". |
 | **Inyección de dependencias** | Un servicio recibe sus colaboradores en el constructor en lugar de crearlos (`container.js`). |
 | **Migración** | Sentencia SQL que actualiza la estructura de una base existente sin borrar datos. |
+| **RustDesk / hbbs / hbbr** | Escritorio remoto open source; hbbs es el directorio de IDs y hbbr el relay. |
+| **NAT** | Lo que hace un router para que varios equipos compartan una IP pública; impide conectarse "hacia adentro" sin configuración. |
+| **P2P / relay** | P2P = los dos equipos hablan directo; relay = el tráfico pasa por un servidor intermedio cuando P2P no es posible. |
 | **Fingerprint** | Huella del servidor SSH; la primera vez `ssh` pregunta si confías en él. |
 
 ---
 
 ## 📄 Licencia
 
-MIT — ADAVAM © 2026
+Copyright © 2026 **MadXcorp - ADAVAM** · <https://www.adavam.com>
+
+XSS Manager es software libre bajo la **[GNU Affero General Public License v3.0 o posterior](LICENSE)** (`AGPL-3.0-or-later`).
+
+| Puedes | Debes |
+|---|---|
+| Usar la app, también con fines comerciales | Conservar el copyright y la atribución al autor original ([NOTICE](NOTICE)) |
+| Estudiar y modificar el código | Publicar el código fuente de tus modificaciones bajo `AGPL-3.0-or-later` |
+| Redistribuirla o venderla | Ofrecer el código también si la usas como servicio por red |
+| | Indicar qué cambiaste y cuándo |
+
+Cualquier mejora o versión derivada debe seguir siendo open source bajo la misma licencia. Para contribuir, consulta [CONTRIBUTING.md](CONTRIBUTING.md).

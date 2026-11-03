@@ -4,7 +4,8 @@ import { Injectable, OnDestroy, signal } from '@angular/core';
 const IDLE_TIMEOUT_MS = 15 * 60 * 1000;
 /** Segundos de cuenta regresiva del aviso antes de cerrar */
 const IDLE_WARNING_SECONDS = 60;
-const IDLE_EVENTS = ['mousemove', 'mousedown', 'keydown', 'wheel', 'touchstart'] as const;
+// pointer*: el escritorio remoto (noVNC) puede suprimir los eventos de mouse de compatibilidad
+const IDLE_EVENTS = ['mousemove', 'mousedown', 'pointermove', 'pointerdown', 'keydown', 'wheel', 'touchstart'] as const;
 const CHECK_INTERVAL_MS = 1000;
 
 /**
