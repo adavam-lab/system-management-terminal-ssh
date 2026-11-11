@@ -17,8 +17,9 @@ export class SshService {
     this.exit$ = ipc.on<TerminalExit>(IpcChannels.TERMINAL_EXIT);
   }
 
-  start(connectionId: string, cols: number, rows: number): Promise<boolean> {
-    return this.ipc.invoke<boolean>(IpcChannels.START_SSH, { connectionId, cols, rows });
+  /** `sessionId` identifica la terminal; `connectionId` el servidor (puede repetirse en varias terminales) */
+  start(sessionId: string, connectionId: string, cols: number, rows: number): Promise<boolean> {
+    return this.ipc.invoke<boolean>(IpcChannels.START_SSH, { sessionId, connectionId, cols, rows });
   }
 
   close(connectionId: string): Promise<boolean> {

@@ -3,7 +3,7 @@
   "version": "1.0.2",
   "description": "Aplicación para administrar conexiones SSH",
   "author": {
-    "name": "MadXcorp - ADAVAM",
+    "name": "MadXcorp - ADAVAM con el Ing. E. Daniel Valencia Martínez, MSc.",
     "url": "https://www.adavam.com"
   },
   "license": "AGPL-3.0-or-later",
@@ -25,8 +25,8 @@
   "packageManager": "npm@11.12.1",
   "build": {
     "appId": "com.ssh-manager.app",
-    "productName": "XSS Manager",
-    "copyright": "Copyright © 2026 MadXcorp - ADAVAM. Licencia AGPL-3.0-or-later",
+    "productName": "XSSH Manager",
+    "copyright": "Copyright © 2026 MadXcorp - ADAVAM con el Ing. E. Daniel Valencia Martínez, MSc. Licencia AGPL-3.0-or-later",
     "icon": "public/logo-single.png",
     "mac": {
       "icon": "public/logo-single.png",
@@ -50,7 +50,7 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "menuCategory": "ADAVAM",
-      "shortcutName": "XSS Manager",
+      "shortcutName": "XSSH Manager",
       "license": "build/license.txt",
       "include": "build/installer.nsh",
       "artifactName": "${productName}-Setup-${version}.${ext}",

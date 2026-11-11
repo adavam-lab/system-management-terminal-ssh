@@ -1,8 +1,8 @@
-XSS Manager
-Copyright (C) 2026 MadXcorp - ADAVAM <https://www.adavam.com>
+XSSH Manager
+Copyright (C) 2026 MadXcorp - ADAVAM con el Ing. E. Daniel Valencia Martínez, MSc. <https://www.adavam.com>
 Repositorio original: https://github.com/adavam-lab/system-management-terminal-ssh
 
-Autor original: MadXcorp - ADAVAM (E. Daniel Valencia)
+Autor original: MadXcorp - ADAVAM con el Ing. E. Daniel Valencia Martínez, MSc.
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU Affero General Public License as published
@@ -27,7 +27,7 @@ conservar, en el código fuente y en los "Avisos Legales Apropiados" que
 muestre la aplicación (por ejemplo, la pantalla "Acerca de" o la licencia
 del instalador), la siguiente atribución razonable de autoría:
 
-    "Basado en XSS Manager, creado por MadXcorp - ADAVAM
+    "Basado en XSSH Manager, creado por MadXcorp - ADAVAM con el Ing. E. Daniel Valencia Martínez, MSc.
      (https://www.adavam.com)"
 
 Las versiones modificadas deben indicar claramente que han sido

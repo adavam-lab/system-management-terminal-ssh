@@ -1,6 +1,6 @@
 # Cómo contribuir
 
-¡Gracias por querer mejorar XSS Manager!
+¡Gracias por querer mejorar XSSH Manager!
 
 ## Licencia de las contribuciones
 
@@ -17,7 +17,7 @@ Al enviar un pull request, parche o cualquier otra contribución aceptas que:
 - Puedes usar, estudiar, modificar, redistribuir e incluso vender el programa.
 - Si **distribuyes** una versión modificada (instalador, binario, fork), debes publicar su código fuente completo bajo `AGPL-3.0-or-later`.
 - Si ofreces una versión modificada **a través de una red** (por ejemplo, como servicio web), también debes ofrecer su código fuente a quienes la usen.
-- Debes indicar que lo modificaste y conservar la atribución: *"Basado en XSS Manager, creado por MadXcorp - ADAVAM"*.
+- Debes indicar que lo modificaste y conservar la atribución: *"Basado en XSSH Manager, creado por MadXcorp - ADAVAM con el Ing. E. Daniel Valencia Martínez, MSc."*.
 
 ## Encabezado para archivos nuevos
 
@@ -25,5 +25,5 @@ Si creas un archivo de código nuevo, añade al principio:
 
 ```js
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Copyright (C) 2026 MadXcorp - ADAVAM
+// Copyright (C) 2026 MadXcorp - ADAVAM con el Ing. E. Daniel Valencia Martínez, MSc.
 ```

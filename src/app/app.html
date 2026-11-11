@@ -8,7 +8,7 @@
     [style.width.px]="sidebarCollapsed ? 64 : sidebarWidth">
     <div class="sidebar-logo">
       <img src="logo-single.png" alt="Logo" class="sidebar-logo-img" />
-      <span class="sidebar-logo-text hide-collapsed">SSH MANAGER</span>
+      <span class="sidebar-logo-text hide-collapsed">XSSH MANAGER</span>
       <button class="sidebar-toggle" (click)="toggleSidebar()"
         [title]="sidebarCollapsed ? 'Expandir panel' : 'Contraer panel'"
         [attr.aria-label]="sidebarCollapsed ? 'Expandir panel' : 'Contraer panel'"
@@ -167,7 +167,7 @@
     <!-- Fila de conexión reutilizable -->
     <ng-template #connRow let-conn let-level="level">
       <div class="tree-row conn-row" [ngClass]="'level-' + level" [class.active]="conn.id === activeConnectionId"
-        [class.live]="activeSessions.includes(conn.id)" (click)="connect(conn)"
+        [class.live]="isLive(conn.id)" (click)="connect(conn)"
         [title]="conn.name + ' — ' + connectionSubtitle(conn)">
         <span class="tree-chevron spacer"></span>
         <span class="status-dot"></span>
@@ -319,7 +319,7 @@
       }
 
       <div *ngIf="connections.length === 0 && projects.length === 0" class="welcome-container">
-        <h1>Bienvenido a XSS Manager</h1>
+        <h1>Bienvenido a XSSH Manager</h1>
         <p>No tienes conexiones. Crea un proyecto o haz clic en '+' para agregar una conexión.</p>
       </div>
     </div>
@@ -389,19 +389,35 @@
     <!-- Terminal -->
     <div [style.display]="activeConnectionId ? 'flex' : 'none'" class="terminal-wrapper">
       <div class="terminal-header">
-        <span>{{ isRemote() ? 'Escritorio remoto' : 'Terminal Activa' }}: {{ getActiveConnectionName() }}</span>
+        <div class="terminal-title">
+          <span>{{ isRemote() ? 'Escritorio remoto' : 'Terminal Activa' }}: {{ getActiveConnectionName() }}</span>
+          @if (!isRemote()) {
+          <div class="session-tabs" role="tablist">
+            @for (s of activeServerSessions; track s; let i = $index) {
+            <button type="button" role="tab" class="session-tab" [class.active]="s === activeSessionId"
+              [attr.aria-selected]="s === activeSessionId" (click)="focusSession(s)" [title]="'Terminal ' + (i + 1)">
+              Terminal {{ i + 1 }}
+              <span class="session-tab-close" role="button" aria-label="Cerrar esta terminal"
+                title="Cerrar esta terminal" (click)="disconnect(s, false); $event.stopPropagation()">×</span>
+            </button>
+            }
+            <button type="button" class="session-add" (click)="addTerminal()"
+              title="Abrir otra terminal de este servidor" aria-label="Abrir otra terminal de este servidor">+</button>
+          </div>
+          }
+        </div>
         <button (click)="disconnect(undefined, false)" class="btn-danger btn-sm"
           (mouseup)="$any($event.target).blur()">⬛ Cerrar Conexión</button>
       </div>
-      <!-- Contenedores de Terminales -->
+      <!-- Contenedores de Terminales (una por sesión) -->
       <ng-container *ngFor="let sessionId of activeSessions">
         @if (isRemote(sessionId)) {
-        <div [hidden]="sessionId !== activeConnectionId" class="terminal-container remote-container">
+        <div [hidden]="sessionId !== activeSessionId" class="terminal-container remote-container">
           <app-remote-desktop [connectionId]="sessionId" [os]="connectionOf(sessionId)?.remote_os"
-            [active]="sessionId === activeConnectionId" />
+            [active]="sessionId === activeSessionId" />
         </div>
         } @else {
-        <div [id]="'term-' + sessionId" [hidden]="sessionId !== activeConnectionId" class="terminal-container">
+        <div [id]="'term-' + sessionId" [hidden]="sessionId !== activeSessionId" class="terminal-container">
         </div>
         }
       </ng-container>
@@ -747,7 +763,7 @@
     </div>
     <h2 id="idle-title" class="idle-title">¿Sigues ahí?</h2>
     <p class="idle-text">
-      No detectamos actividad. La aplicación se cerrará en
+      No detectamos actividad. La sesión se cerrará en
       <strong class="idle-count">{{ idleCountdown }}</strong> segundos.
     </p>
     <div class="pm-footer">

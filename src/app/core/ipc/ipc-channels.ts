@@ -1,7 +1,5 @@
 /** Nombres de canales IPC (deben coincidir con electron/ipc/channels.js). */
 export const IpcChannels = {
-  APP_QUIT_IDLE: 'app:quit-idle',
-
   DB_BACKUP: 'db:backup',
   DB_RESTORE: 'db:restore',
 

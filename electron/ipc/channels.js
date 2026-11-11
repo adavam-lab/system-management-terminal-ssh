@@ -1,7 +1,5 @@
 /** Nombres de canales IPC compartidos (deben coincidir con src/app/core/ipc/ipc-channels.ts). */
 module.exports = Object.freeze({
-  APP_QUIT_IDLE: 'app:quit-idle',
-
   DB_BACKUP: 'db:backup',
   DB_RESTORE: 'db:restore',
 

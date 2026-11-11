@@ -1,7 +1,7 @@
 import { Injectable, OnDestroy, signal } from '@angular/core';
 
-/** Minutos sin actividad antes de cerrar la app */
-const IDLE_TIMEOUT_MS = 15 * 60 * 1000;
+/** Minutos sin actividad antes de cerrar la sesión (vuelve al login) */
+const IDLE_TIMEOUT_MS = 30 * 60 * 1000;
 /** Segundos de cuenta regresiva del aviso antes de cerrar */
 const IDLE_WARNING_SECONDS = 60;
 // pointer*: el escritorio remoto (noVNC) puede suprimir los eventos de mouse de compatibilidad
@@ -39,6 +39,8 @@ export class IdleService implements OnDestroy {
     IDLE_EVENTS.forEach(e => window.removeEventListener(e, this.onActivity, { capture: true }));
     clearInterval(this.timer);
     this.timer = undefined;
+    // Sin temporizador no debe quedar un aviso pendiente (p. ej. sobre la pantalla de login)
+    this._countdown.set(null);
   }
 
   stayActive(): void {

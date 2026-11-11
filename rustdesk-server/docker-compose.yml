@@ -1,4 +1,4 @@
-# Servidor RustDesk propio (OSS) para XSS Manager.
+# Servidor RustDesk propio (OSS) para XSSH Manager.
 #   hbbs = servidor de IDs (registro y conexión directa P2P)
 #   hbbr = relay (cuando el P2P no es posible)
 #

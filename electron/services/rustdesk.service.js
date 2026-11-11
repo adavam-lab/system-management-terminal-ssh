@@ -47,7 +47,7 @@ class RustDeskService {
       const child = spawn(executable, args, { detached: true, stdio: 'ignore' });
       child.once('error', err => reject(new Error(`No se pudo abrir RustDesk: ${err.message}`)));
       child.once('spawn', () => {
-        child.unref(); // RustDesk sigue abierto aunque se cierre XSS Manager
+        child.unref(); // RustDesk sigue abierto aunque se cierre XSSH Manager
         resolve(true);
       });
     });

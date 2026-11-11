@@ -27,7 +27,7 @@ RD="/Applications/RustDesk.app/Contents/MacOS/RustDesk"
 
 echo
 echo "=============================================="
-echo " Listo. Datos para XSS Manager:"
+echo " Listo. Datos para XSSH Manager:"
 echo "   ID de RustDesk : $("$RD" --get-id)"
 echo "   Contraseña     : (la que pasaste como 3er parámetro)"
 echo "=============================================="

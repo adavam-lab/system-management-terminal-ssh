@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Instala RustDesk en una PC Windows y la deja lista para recibir conexiones desde XSS Manager.
+  Instala RustDesk en una PC Windows y la deja lista para recibir conexiones desde XSSH Manager.
 
 .EXAMPLE
   # PowerShell como ADMINISTRADOR, en la PC remota:
@@ -46,7 +46,7 @@ Start-Sleep 5
 $id = (& $exe --get-id | Out-String).Trim()
 Write-Host ""
 Write-Host "=============================================="
-Write-Host " Listo. Datos para XSS Manager:"
+Write-Host " Listo. Datos para XSSH Manager:"
 Write-Host "   ID de RustDesk : $id"
 Write-Host "   Contraseña     : (la que pasaste en -Contrasena)"
 Write-Host "=============================================="

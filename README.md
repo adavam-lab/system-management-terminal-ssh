@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="public/logo.png" alt="XSS Manager Logo" width="320" />
+  <img src="public/logo.png" alt="XSSH Manager Logo" width="320" />
 </p>
 
-<h1 align="center">XSS Manager — ADAVAM</h1>
+<h1 align="center">XSSH Manager — ADAVAM</h1>
 
 <p align="center">
   Aplicación de escritorio para gestionar y administrar conexiones SSH de forma segura, con terminal integrada y base de datos local.
@@ -41,7 +41,7 @@
 ## 📸 Capturas de Pantalla
 
 <p align="center">
-  <img src="public/img-github/slideshow.gif" alt="Recorrido por XSS Manager" width="900" />
+  <img src="public/img-github/slideshow.gif" alt="Recorrido por XSSH Manager" width="900" />
 </p>
 
 <details>
@@ -157,7 +157,7 @@ npm start
 npm run electron:build
 ```
 
-Genera `XSS Manager-Setup-<versión>.exe` en Windows o `XSS Manager <versión>.dmg` en macOS, dentro de `dist/`.
+Genera `XSSH Manager-Setup-<versión>.exe` en Windows o `XSSH Manager <versión>.dmg` en macOS, dentro de `dist/`.
 
 ### Scripts disponibles
 
@@ -344,7 +344,7 @@ Las tablas se definen en `electron/database/schema.js`. Los cambios de columnas 
 ```json
 "build": {
   "appId": "com.ssh-manager.app",
-  "productName": "XSS Manager",
+  "productName": "XSSH Manager",
   "mac": { "target": ["dmg"], "icon": "public/logo-single.png" },
   "win": { "icon": "public/logo-single.png" },
   "nsis": { "oneClick": false, "allowToChangeInstallationDirectory": true }
@@ -364,12 +364,12 @@ Las tablas se definen en `electron/database/schema.js`. Los cambios de columnas 
 
 ## 🖥️ Escritorio remoto (VNC por túnel SSH)
 
-Además de terminales, una conexión puede ser de tipo **Escritorio remoto**: abre una pestaña con la pantalla de un equipo **Windows, macOS o Linux** y te deja controlarlo con mouse y teclado desde el equipo donde está instalado XSS Manager.
+Además de terminales, una conexión puede ser de tipo **Escritorio remoto**: abre una pestaña con la pantalla de un equipo **Windows, macOS o Linux** y te deja controlarlo con mouse y teclado desde el equipo donde está instalado XSSH Manager.
 
 ### Cómo usarlo
 
 1. Prepara el equipo remoto una sola vez ([Configurar el equipo remoto](#configurar-el-equipo-remoto)).
-2. En XSS Manager pulsa **+ Conexión** y elige **Tipo de conexión → Escritorio remoto**.
+2. En XSSH Manager pulsa **+ Conexión** y elige **Tipo de conexión → Escritorio remoto**.
 3. Llena los datos SSH del equipo remoto (host, puerto SSH, usuario y contraseña o llave): son los que abren el túnel.
 4. En el bloque *Escritorio remoto* elige el **sistema** (Windows / macOS / Linux), el **puerto VNC** (5900 por defecto) y la **contraseña VNC**.
    - En **macOS** puedes dejar vacía la contraseña VNC: se usa la contraseña de la cuenta de Mac.
@@ -403,7 +403,7 @@ El texto que copias en el remoto llega solo a tu portapapeles. La pantalla remot
 ### Cómo funciona
 
 ```
-┌───────────────────────── XSS Manager (tu equipo) ─────────────────────────┐
+┌───────────────────────── XSSH Manager (tu equipo) ─────────────────────────┐
 │                                                                           │
 │  Angular (renderer)              Electron (main)                          │
 │  ┌──────────────────┐  WS   ┌──────────────────┐  TCP  ┌──────────────┐   │
@@ -479,7 +479,7 @@ AllowTcpForwarding yes
 
 2. Instala **TightVNC Server** (modo servicio) y define una contraseña: es la **Contraseña VNC** de la conexión.
 3. En TightVNC → Configuración → Acceso: marca *"Allow loopback connections"* y *"Allow only loopback connections"*.
-4. En XSS Manager: usuario y contraseña de la cuenta de Windows, sistema **Windows**, puerto VNC **5900**.
+4. En XSSH Manager: usuario y contraseña de la cuenta de Windows, sistema **Windows**, puerto VNC **5900**.
 
 #### macOS
 
@@ -500,7 +500,7 @@ x11vnc -display :0 -localhost -rfbauth ~/.vnc/passwd -forever -shared
 - Si el escritorio usa **Wayland**, x11vnc no funciona: usa `wayvnc` (Sway/Hyprland) o elige la sesión "Xorg" en el login.
 - Servidor sin pantalla física: TigerVNC con `vncserver :1 -localhost yes` (puerto **5901**).
 
-#### Comprobar sin XSS Manager
+#### Comprobar sin XSSH Manager
 
 Si algo falla, valida el equipo remoto con un cliente VNC cualquiera:
 
@@ -510,7 +510,7 @@ ssh -N -L 5901:localhost:5900 usuario@IP_REMOTA
 open vnc://localhost:5901
 ```
 
-Si así se ve la pantalla, el problema está en la configuración de la conexión en XSS Manager.
+Si así se ve la pantalla, el problema está en la configuración de la conexión en XSSH Manager.
 
 ### Pruebas manuales
 
@@ -532,12 +532,12 @@ Si así se ve la pantalla, el problema está en la configuración de la conexió
 
 El escritorio VNC necesita que llegues a la PC por SSH (misma red o VPN). **RustDesk no**: la PC remota y la tuya se conectan *hacia afuera* a un servidor intermedio, así que funciona aunque estén detrás de NAT, en otra ciudad o sin VPN. Es lo mismo que hacen AnyDesk o TeamViewer, pero open source y con **servidor propio**.
 
-XSS Manager guarda el **ID** y la **contraseña** de cada equipo y, al pulsar **Abrir RustDesk**, lanza el cliente RustDesk de tu PC ya conectado a ese equipo.
+XSSH Manager guarda el **ID** y la **contraseña** de cada equipo y, al pulsar **Abrir RustDesk**, lanza el cliente RustDesk de tu PC ya conectado a ese equipo.
 
 ### Piezas
 
 ```
-   Tu PC (XSS Manager + RustDesk)                        PC remota (RustDesk como servicio)
+   Tu PC (XSSH Manager + RustDesk)                        PC remota (RustDesk como servicio)
    ┌─────────────────────────────┐                       ┌─────────────────────────────┐
    │ "Abrir RustDesk"            │                       │ ID 123 456 789              │
    │  → rustdesk --connect <ID>  │                       │ contraseña permanente       │
@@ -555,9 +555,9 @@ XSS Manager guarda el **ID** y la **contraseña** de cada equipo y, al pulsar **
 | Pieza | Dónde | Qué es |
 |-------|-------|--------|
 | **hbbs / hbbr** | Un servidor con IP pública (VPS o equipo de la oficina con puertos abiertos) | Servidor RustDesk OSS: directorio de IDs + relay |
-| **Cliente RustDesk "controlador"** | Tu PC, donde está XSS Manager | La ventana que muestra la pantalla remota |
+| **Cliente RustDesk "controlador"** | Tu PC, donde está XSSH Manager | La ventana que muestra la pantalla remota |
 | **Cliente RustDesk "controlado"** | Cada PC Windows / Mac / Linux | Servicio que comparte la pantalla con contraseña permanente |
-| **XSS Manager** | Tu PC | Guarda ID + contraseña y abre RustDesk conectado |
+| **XSSH Manager** | Tu PC | Guarda ID + contraseña y abre RustDesk conectado |
 
 > Puedes saltarte el servidor propio y usar los servidores públicos de RustDesk para probar, pero son lentos y compartidos. Para trabajo real, usa el tuyo.
 
@@ -608,12 +608,12 @@ Anota el **ID** que imprime el script.
 
 ### Paso 3 — Configurar tu PC (la que controla)
 
-1. Instala RustDesk en la PC donde usas XSS Manager.
+1. Instala RustDesk en la PC donde usas XSSH Manager.
 2. RustDesk → Ajustes → **Red**: el mismo *Servidor de ID* y la misma *Key* del paso 1.
 
-El formulario de XSS Manager te avisa si RustDesk no está instalado o si todavía usa los servidores públicos.
+El formulario de XSSH Manager te avisa si RustDesk no está instalado o si todavía usa los servidores públicos.
 
-### Paso 4 — Crear la conexión en XSS Manager
+### Paso 4 — Crear la conexión en XSSH Manager
 
 1. **+ Conexión** → *Tipo de conexión* → **RustDesk**.
 2. Nombre, **ID de RustDesk** (con o sin espacios), sistema (opcional) y **contraseña permanente**.
@@ -637,7 +637,7 @@ Decisiones:
 - **El ID se guarda en `host` y la contraseña en `password`**: así no cambia la tabla (esas columnas son `NOT NULL`) y "Copiar clave" funciona igual.
 - **Se usa el cliente oficial** en vez de reimplementar el protocolo: RustDesk ya resuelve P2P, NAT, cifrado y relay.
 - Rutas donde se busca RustDesk: macOS `/Applications/RustDesk.app`, Windows `C:\Program Files\RustDesk\rustdesk.exe`, Linux `/usr/bin/rustdesk`.
-- La ventana de RustDesk es independiente: no ocupa una pestaña y sigue abierta aunque cierres XSS Manager.
+- La ventana de RustDesk es independiente: no ocupa una pestaña y sigue abierta aunque cierres XSSH Manager.
 
 ### ¿VNC o RustDesk?
 
@@ -645,7 +645,7 @@ Decisiones:
 |--|------------------|----------|
 | Requiere llegar por SSH (red/VPN) | Sí | No |
 | Requiere servidor propio | No | Recomendado |
-| Se ve dentro de XSS Manager | Sí (pestaña) | No (ventana de RustDesk) |
+| Se ve dentro de XSSH Manager | Sí (pestaña) | No (ventana de RustDesk) |
 | Instalar en la PC remota | sshd + servidor VNC | Cliente RustDesk |
 | Transferencia de archivos, audio, multi-monitor | No | Sí |
 
@@ -732,9 +732,9 @@ Las respuestas IPC llegan fuera del ciclo de detección de cambios de Angular, y
 
 ## 📄 Licencia
 
-Copyright © 2026 **MadXcorp - ADAVAM** · <https://www.adavam.com>
+Copyright © 2026 **MadXcorp - ADAVAM con el Ing. E. Daniel Valencia Martínez, MSc.** · <https://www.adavam.com>
 
-XSS Manager es software libre bajo la **[GNU Affero General Public License v3.0 o posterior](LICENSE)** (`AGPL-3.0-or-later`).
+XSSH Manager es software libre bajo la **[GNU Affero General Public License v3.0 o posterior](LICENSE)** (`AGPL-3.0-or-later`).
 
 | Puedes | Debes |
 |---|---|

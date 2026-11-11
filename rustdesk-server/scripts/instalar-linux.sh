@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Instala RustDesk en una PC Linux (Debian/Ubuntu, x86_64 o arm64) y la configura
-# para recibir conexiones desde XSS Manager.
+# para recibir conexiones desde XSSH Manager.
 #
 # Uso (en la PC remota):
 #   sudo ./instalar-linux.sh <servidor> "<clave id_ed25519.pub>" "<contraseña permanente>"
@@ -36,7 +36,7 @@ sleep 5
 
 echo
 echo "=============================================="
-echo " Listo. Datos para XSS Manager:"
+echo " Listo. Datos para XSSH Manager:"
 echo "   ID de RustDesk : $(rustdesk --get-id)"
 echo "   Contraseña     : (la que pasaste como 3er parámetro)"
 echo "=============================================="

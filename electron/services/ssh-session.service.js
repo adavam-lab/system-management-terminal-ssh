@@ -16,10 +16,15 @@ class SshSessionService {
     this.sessions = new Map();
   }
 
-  start({ connectionId, cols = DEFAULT_TERMINAL_SIZE.cols, rows = DEFAULT_TERMINAL_SIZE.rows }) {
+  /**
+   * `sessionId` identifica una terminal concreta; una misma conexión puede tener varias.
+   * Si no se envía, la sesión usa el id de la conexión (una sola terminal por conexión).
+   */
+  start({ sessionId, connectionId, cols = DEFAULT_TERMINAL_SIZE.cols, rows = DEFAULT_TERMINAL_SIZE.rows }) {
+    const key = sessionId || connectionId;
     const conn = this.connectionService.getById(connectionId);
     if (!conn) throw new Error('Conexión no encontrada');
-    if (this.sessions.has(connectionId)) return true;
+    if (this.sessions.has(key)) return true;
 
     // Lanzar ssh directamente (sin shell intermedio): al terminar la sesión
     // el proceso muere y onExit cierra la terminal en la UI.
@@ -31,19 +36,19 @@ class SshSessionService {
       env: process.env,
       useConpty: false,
     });
-    this.sessions.set(connectionId, proc);
+    this.sessions.set(key, proc);
 
     const autoResponder = this.createAutoResponder(conn, proc);
     proc.onData(data => {
-      this.onData(connectionId, data);
+      this.onData(key, data);
       autoResponder(data);
     });
 
     proc.onExit(({ exitCode }) => {
       // Si se cerró manualmente desde la UI ya no está registrada: no avisar
-      if (this.sessions.get(connectionId) !== proc) return;
-      this.sessions.delete(connectionId);
-      this.onExit(connectionId, exitCode);
+      if (this.sessions.get(key) !== proc) return;
+      this.sessions.delete(key);
+      this.onExit(key, exitCode);
     });
 
     return true;

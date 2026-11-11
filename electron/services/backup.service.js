@@ -24,7 +24,7 @@ class BackupService {
     try {
       const tables = probe.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all().map(r => r.name);
       if (!tables.includes('users') || !tables.includes('connections')) {
-        throw new Error('El archivo no corresponde a una base de datos de XSS Manager.');
+        throw new Error('El archivo no corresponde a una base de datos de XSSH Manager.');
       }
     } finally {
       probe.close();

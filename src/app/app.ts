@@ -18,7 +18,6 @@ import { ToastService } from './core/services/toast.service';
 import { SessionStateService } from './core/services/session-state.service';
 import { SidebarPreferencesService } from './core/services/sidebar-preferences.service';
 import { IdleService } from './core/services/idle.service';
-import { AppLifecycleService } from './core/services/app-lifecycle.service';
 
 const COLLAPSED_SIDEBAR_WIDTH = 64;
 const SIDEBAR_TRANSITION_MS = 220;
@@ -75,8 +74,13 @@ export class AppComponent implements OnInit, OnDestroy {
   catalogs: Catalog[] = [];
 
   // ── Estado de la vista ──
-  activeConnectionId: string | null = null;
+  /** Terminal (o escritorio remoto) que se muestra; una conexión puede tener varias terminales */
+  activeSessionId: string | null = null;
+  /** Ids de sesión abiertas. En escritorio remoto el id de sesión es el id de la conexión */
   activeSessions: string[] = [];
+  /** sessionId → connectionId, solo para terminales SSH */
+  private readonly sessionConnection = new Map<string, string>();
+  private sessionSeq = 0;
   dashboardScope: DashboardScope = { type: 'all' };
   showForm = false;
   isEditing = false;
@@ -104,7 +108,6 @@ export class AppComponent implements OnInit, OnDestroy {
     private sessionState: SessionStateService,
     private sidebar: SidebarPreferencesService,
     private idle: IdleService,
-    private lifecycle: AppLifecycleService,
     private cdr: ChangeDetectorRef,
   ) {}
 
@@ -117,7 +120,7 @@ export class AppComponent implements OnInit, OnDestroy {
     this.ssh.closeAll().catch(() => {});
     this.remoteDesktop.stopAll().catch(() => {});
 
-    this.idle.start(() => this.lifecycle.quitForInactivity());
+    if (this.isLoggedIn) this.startIdle();
     this.loadAll();
 
     this.subscriptions.add(
@@ -150,7 +153,7 @@ export class AppComponent implements OnInit, OnDestroy {
 
   @HostListener('window:resize')
   onWindowResize() {
-    this.terminals.fit(this.activeConnectionId);
+    this.terminals.fit(this.activeSessionId);
   }
 
   // ───────────── Cierre por inactividad ─────────────
@@ -164,24 +167,32 @@ export class AppComponent implements OnInit, OnDestroy {
     this.idle.stayActive();
   }
 
+  /** Tras el tiempo sin actividad se cierra la sesión y se vuelve al login (la app sigue abierta) */
+  private startIdle() {
+    this.idle.start(() => this.logout());
+  }
+
   // ───────────── Sesión ─────────────
 
   onLogin(user: User) {
     this.isLoggedIn = true;
     this.currentUser = user;
     this.sessionState.user = user;
+    this.startIdle();
     this.loadAll();
     this.toast.success(`Bienvenido, ${user.name}!`);
   }
 
   logout() {
+    this.idle.stop();
     this.sessionState.clear();
     [...this.activeSessions].forEach(id => this.disconnect(id));
     this.isLoggedIn = false;
     this.currentUser = null;
     this.connections = [];
     this.activeSessions = [];
-    this.activeConnectionId = null;
+    this.activeSessionId = null;
+    this.sessionConnection.clear();
   }
 
   getUserInitials(): string {
@@ -315,7 +326,7 @@ export class AppComponent implements OnInit, OnDestroy {
 
   /** Reajusta xterm cuando cambia el ancho disponible (tras la transición CSS) */
   private refitActiveTerminal() {
-    setTimeout(() => this.terminals.fit(this.activeConnectionId), SIDEBAR_TRANSITION_MS);
+    setTimeout(() => this.terminals.fit(this.activeSessionId), SIDEBAR_TRANSITION_MS);
   }
 
   // ───────────── Consultas del árbol (para la plantilla) ─────────────
@@ -361,17 +372,43 @@ export class AppComponent implements OnInit, OnDestroy {
     return this.newConnection.project_id ? this.catalogsOf(this.newConnection.project_id) : [];
   }
 
+  /** Conexión que se está viendo (la de la terminal o escritorio activo) */
+  get activeConnectionId(): string | null {
+    return this.activeSessionId ? this.connectionIdOf(this.activeSessionId) : null;
+  }
+
+  /** Terminales SSH de la conexión activa (para las pestañas de la cabecera) */
+  get activeServerSessions(): string[] {
+    const id = this.activeConnectionId;
+    return id ? this.sessionsOf(id) : [];
+  }
+
+  /** connectionId de una sesión; en escritorio remoto el id de sesión ya es el de la conexión */
+  connectionIdOf(sessionId: string): string {
+    return this.sessionConnection.get(sessionId) ?? sessionId;
+  }
+
+  /** Sesiones abiertas de una conexión, en orden de creación */
+  sessionsOf(connectionId: string): string[] {
+    return this.activeSessions.filter(s => this.connectionIdOf(s) === connectionId);
+  }
+
+  isLive(connectionId: string): boolean {
+    return this.activeSessions.some(s => this.connectionIdOf(s) === connectionId);
+  }
+
   getActiveConnectionName(connectionId?: string): string {
     return this.connectionOf(connectionId)?.name ?? '';
   }
 
-  connectionOf(connectionId?: string | null): Connection | undefined {
-    const id = connectionId || this.activeConnectionId;
+  /** Acepta un id de conexión o de sesión; sin argumento usa la conexión activa */
+  connectionOf(idOrSessionId?: string | null): Connection | undefined {
+    const id = idOrSessionId ? this.connectionIdOf(idOrSessionId) : this.activeConnectionId;
     return this.connections.find(c => c.id === id);
   }
 
-  isRemote(connectionId?: string | null): boolean {
-    return this.connectionOf(connectionId)?.kind === 'remote';
+  isRemote(idOrSessionId?: string | null): boolean {
+    return this.connectionOf(idOrSessionId)?.kind === 'remote';
   }
 
   remoteOsLabel(conn: Connection): string {
@@ -419,7 +456,7 @@ export class AppComponent implements OnInit, OnDestroy {
   showScope(scope: DashboardScope) {
     this.dashboardScope = scope;
     this.sessionState.scope = scope;
-    this.activeConnectionId = null;
+    this.activeSessionId = null;
     this.showForm = false;
     // Al abrir un nodo en el dashboard, expandirlo también en el sidebar
     if (scope.type === 'catalog') {
@@ -594,7 +631,7 @@ export class AppComponent implements OnInit, OnDestroy {
     if (!confirm('¿Eliminar esta conexión de forma permanente?')) return;
     try {
       await this.connectionService.delete(id);
-      if (this.activeSessions.includes(id)) this.disconnect(id);
+      this.sessionsOf(id).forEach(s => this.disconnect(s));
       this.connections = this.connections.filter(c => c.id !== id);
       this.toast.info('Conexión eliminada');
     } catch (err) {
@@ -637,51 +674,80 @@ export class AppComponent implements OnInit, OnDestroy {
 
   // ───────────── Terminales SSH ─────────────
 
+  /** Abre la conexión: si ya tiene terminales, muestra la primera; si no, abre una nueva */
   async connect(conn: Connection, event?: Event) {
     event?.stopPropagation();
     const id = conn.id;
     if (!id) return;
 
-    // RustDesk abre su propia ventana: no hay pestaña ni sesión en XSS Manager
+    // RustDesk abre su propia ventana: no hay pestaña ni sesión en XSSH Manager
     if (conn.kind === 'rustdesk') {
       await this.openRustDesk(conn);
       return;
     }
 
     this.showForm = false;
-    this.activeConnectionId = id;
 
-    if (this.activeSessions.includes(id)) {
-      // Ya está abierta: solo cambiar a ella y ajustar tamaño
-      await delay(TERMINAL_SWITCH_DELAY_MS);
-      this.terminals.focus(id);
-      return;
-    }
-
-    this.activeSessions.push(id);
-
-    // Escritorio remoto: <app-remote-desktop> abre el túnel y muestra su propio estado
+    // Escritorio remoto: una sola sesión por conexión, con el id de la conexión
     if (conn.kind === 'remote') {
-      this.toast.info(`Abriendo escritorio de ${conn.name}...`, CONNECTING_TOAST_MS);
+      this.activeSessionId = id;
+      if (!this.activeSessions.includes(id)) {
+        this.activeSessions.push(id);
+        this.toast.info(`Abriendo escritorio de ${conn.name}...`, CONNECTING_TOAST_MS);
+      }
+      // <app-remote-desktop> abre el túnel y muestra su propio estado
       this.refreshView();
       return;
     }
 
+    const existing = this.sessionsOf(id);
+    if (existing.length > 0) {
+      await this.focusSession(existing[0]);
+      return;
+    }
+
+    await this.openTerminal(conn);
+  }
+
+  /** Botón «+»: abre otra terminal del mismo servidor */
+  addTerminal() {
+    const conn = this.connectionOf();
+    if (!conn || conn.kind !== 'ssh') return;
+    this.showForm = false;
+    void this.openTerminal(conn);
+  }
+
+  /** Muestra una terminal ya abierta y ajusta su tamaño */
+  async focusSession(sessionId: string) {
+    this.activeSessionId = sessionId;
+    await delay(TERMINAL_SWITCH_DELAY_MS);
+    this.terminals.focus(sessionId);
+  }
+
+  /** Crea una sesión SSH nueva para la conexión */
+  private async openTerminal(conn: Connection) {
+    const connectionId = conn.id!;
+    const sessionId = `${connectionId}#${++this.sessionSeq}`;
+    this.sessionConnection.set(sessionId, connectionId);
+    this.activeSessions.push(sessionId);
+    this.activeSessionId = sessionId;
+
     this.toast.info(`Conectando a ${conn.name}...`, CONNECTING_TOAST_MS);
 
-    // Esperar a que la plantilla renderice el contenedor `term-<id>`
+    // Esperar a que la plantilla renderice el contenedor `term-<sessionId>`
     await delay(TERMINAL_MOUNT_DELAY_MS);
-    this.terminals.open(id);
+    this.terminals.open(sessionId);
 
     try {
-      const { cols, rows } = this.terminals.size(id);
-      await this.ssh.start(id, cols, rows);
+      const { cols, rows } = this.terminals.size(sessionId);
+      await this.ssh.start(sessionId, connectionId, cols, rows);
       this.toast.success(`Conectado a ${conn.name}`);
     } catch (err) {
       console.error('Error connecting:', err);
       this.toast.error(`No se pudo conectar a ${conn.name}`);
-      this.disconnect(id);
+      this.disconnect(sessionId);
     }
+    this.refreshView();
   }
 
   private async openRustDesk(conn: Connection) {
@@ -694,21 +760,24 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * @param connectionId sesión a cerrar (por defecto, la activa)
+   * @param sessionId sesión a cerrar (por defecto, la activa)
    * @param isFromBackend true si el proceso ya terminó en el backend
    */
-  disconnect(connectionId?: string, isFromBackend = false) {
-    const id = connectionId || this.activeConnectionId;
+  disconnect(sessionId?: string, isFromBackend = false) {
+    const id = sessionId || this.activeSessionId;
     if (!id) return;
 
-    const name = this.getActiveConnectionName(id);
+    const connectionId = this.connectionIdOf(id);
+    const name = this.getActiveConnectionName(connectionId);
     // Escritorio remoto: al salir de activeSessions se destruye su componente, que cierra el túnel
     if (!isFromBackend && !this.isRemote(id)) this.ssh.close(id).catch(() => {});
 
     this.terminals.dispose(id);
     this.activeSessions = this.activeSessions.filter(s => s !== id);
-    if (this.activeConnectionId === id) {
-      this.activeConnectionId = this.activeSessions.at(-1) ?? null;
+    this.sessionConnection.delete(id);
+    if (this.activeSessionId === id) {
+      // Preferir otra terminal del mismo servidor; si no hay, la última abierta
+      this.activeSessionId = this.sessionsOf(connectionId).at(-1) ?? this.activeSessions.at(-1) ?? null;
     }
 
     if (name) this.toast.info(`Conexión cerrada: ${name}`);

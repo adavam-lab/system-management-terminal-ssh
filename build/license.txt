@@ -1,8 +1,8 @@
-SSH MANAGER - LICENCIA
+XSSH MANAGER - LICENCIA
 ======================
 
-XSS Manager
-Copyright (C) 2026 MadXcorp - ADAVAM
+XSSH Manager
+Copyright (C) 2026 MadXcorp - ADAVAM con el Ing. E. Daniel Valencia Martínez, MSc.
 https://www.adavam.com
 Código fuente: https://github.com/adavam-lab/system-management-terminal-ssh
 
@@ -19,10 +19,10 @@ https://www.gnu.org/licenses/agpl-3.0.html
 
 Cualquier versión modificada u obra derivada debe distribuirse bajo la
 misma licencia, publicar su código fuente y conservar la atribución:
-"Basado en XSS Manager, creado por MadXcorp - ADAVAM".
+"Basado en XSSH Manager, creado por MadXcorp - ADAVAM con el Ing. E. Daniel Valencia Martínez, MSc.".
 
 Al continuar con la instalación, usted acepta utilizar esta aplicación
 bajo su propia responsabilidad, respetando las políticas de seguridad
 de su organización.
 
-Haga clic en "Acepto" para continuar con la instalación de XSS Manager.
+Haga clic en "Acepto" para continuar con la instalación de XSSH Manager.
