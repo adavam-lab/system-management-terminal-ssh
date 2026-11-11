@@ -2,6 +2,9 @@ const { BrowserWindow } = require('electron');
 const url = require('url');
 const config = require('./config');
 
+/** Título de la ventana (debe coincidir con <title> en src/index.html) */
+const WINDOW_TITLE = 'XSSH Manager - MadXcorp';
+
 /** Crea y mantiene la referencia a la ventana principal. */
 class MainWindow {
   constructor({ isDev }) {
@@ -16,6 +19,7 @@ class MainWindow {
   create() {
     this.win = new BrowserWindow({
       ...config.WINDOW_SIZE,
+      title: WINDOW_TITLE,
       icon: config.ICON_PATH,
       autoHideMenuBar: true,
       webPreferences: {
