@@ -1,25 +1,24 @@
 XSSH MANAGER - LICENCIA
-======================
 
 XSSH Manager
 Copyright (C) 2026 MadXcorp - ADAVAM con el Ing. E. Daniel Valencia Martínez, MSc.
 https://www.adavam.com
 Código fuente: https://github.com/adavam-lab/system-management-terminal-ssh
 
-Este programa es software libre: puede redistribuirlo y/o modificarlo
-bajo los términos de la GNU Affero General Public License publicada por
-la Free Software Foundation, ya sea la versión 3 de la Licencia o
-(a su elección) cualquier versión posterior.
+Este programa es software libre y puede redistribuirlo y/o modificarlo
+bajo los términos de la GNU General Public License, versión 2 o versión 3,
+a su elección (GPL-2.0-only OR GPL-3.0-only).
 
 Este programa se distribuye con la esperanza de que sea útil, pero
 SIN NINGUNA GARANTÍA; ni siquiera la garantía implícita de
 COMERCIABILIDAD o IDONEIDAD PARA UN PROPÓSITO PARTICULAR. Consulte la
-GNU Affero General Public License para más detalles:
-https://www.gnu.org/licenses/agpl-3.0.html
+GNU General Public License para más detalles:
+https://www.gnu.org/licenses/gpl-3.0.html y https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
 
-Cualquier versión modificada u obra derivada debe distribuirse bajo la
-misma licencia, publicar su código fuente y conservar la atribución:
+Si usa, copia, modifica o distribuye esta aplicación, debe dar crédito al
+autor original conservando la atribución:
 "Basado en XSSH Manager, creado por MadXcorp - ADAVAM con el Ing. E. Daniel Valencia Martínez, MSc.".
+Las versiones modificadas deben indicar que lo son y publicar su código fuente.
 
 Al continuar con la instalación, usted acepta utilizar esta aplicación
 bajo su propia responsabilidad, respetando las políticas de seguridad

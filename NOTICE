@@ -4,31 +4,38 @@ Repositorio original: https://github.com/adavam-lab/system-management-terminal-s
 
 Autor original: MadXcorp - ADAVAM con el Ing. E. Daniel Valencia Martínez, MSc.
 
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as published
-by the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
+Licencia: GPL-2.0-only OR GPL-3.0-only
+Puedes usar, redistribuir y modificar este programa bajo los términos de la
+GNU General Public License versión 2 (ver LICENSE-GPL-2.0) o de la GNU General
+Public License versión 3 (ver LICENSE), a tu elección.
 
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU Affero General Public License for more details.
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License, version 2 or version 3, as
+published by the Free Software Foundation.
 
-You should have received a copy of the GNU Affero General Public License
-along with this program (see the LICENSE file).  If not, see
-<https://www.gnu.org/licenses/>.
+This program is distributed in the hope that it will be useful, but WITHOUT
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
 ------------------------------------------------------------------------
-Términos adicionales (AGPL-3.0, sección 7, apartado b)
+Atribución (condición de uso del código)
 ------------------------------------------------------------------------
 
-Cualquier copia, versión modificada u obra derivada de este programa debe
-conservar, en el código fuente y en los "Avisos Legales Apropiados" que
-muestre la aplicación (por ejemplo, la pantalla "Acerca de" o la licencia
-del instalador), la siguiente atribución razonable de autoría:
+Si usas, copias, modificas o distribuyes este código, debes dar crédito al
+autor original. Conserva en el código fuente y en los avisos legales que
+muestre la aplicación (por ejemplo, la pantalla "Acerca de" o la licencia del
+instalador) la siguiente atribución:
 
     "Basado en XSSH Manager, creado por MadXcorp - ADAVAM con el Ing. E. Daniel Valencia Martínez, MSc.
      (https://www.adavam.com)"
 
-Las versiones modificadas deben indicar claramente que han sido
-modificadas y la fecha de la modificación (AGPL-3.0, sección 5, apartado a).
+Cuando se distribuya bajo GPL-3.0, esta atribución se considera un "aviso legal
+apropiado" que se debe conservar (GPL-3.0, sección 7, apartado b).
+
+Nota para la versión GPL-2.0: la GPL-2.0 no admite añadir términos adicionales a la licencia,
+por lo que en esa versión la atribución es una condición de uso que se pide
+expresamente y que se recomienda conservar siempre.
+
+Las versiones modificadas deben indicar claramente que han sido modificadas y
+la fecha de la modificación (GPL-3.0, sección 5, apartado a; GPL-2.0, sección 2,
+apartado a).

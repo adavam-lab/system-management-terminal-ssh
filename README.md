@@ -734,13 +734,13 @@ Las respuestas IPC llegan fuera del ciclo de detección de cambios de Angular, y
 
 Copyright © 2026 **MadXcorp - ADAVAM con el Ing. E. Daniel Valencia Martínez, MSc.** · <https://www.adavam.com>
 
-XSSH Manager es software libre bajo la **[GNU Affero General Public License v3.0 o posterior](LICENSE)** (`AGPL-3.0-or-later`).
+XSSH Manager es software libre bajo la **GNU General Public License, versión 2 o 3, a tu elección** (`GPL-2.0-only OR GPL-3.0-only`). Textos completos: [LICENSE](LICENSE) (GPL-3.0) y [LICENSE-GPL-2.0](LICENSE-GPL-2.0).
 
 | Puedes | Debes |
 |---|---|
-| Usar la app, también con fines comerciales | Conservar el copyright y la atribución al autor original ([NOTICE](NOTICE)) |
-| Estudiar y modificar el código | Publicar el código fuente de tus modificaciones bajo `AGPL-3.0-or-later` |
-| Redistribuirla o venderla | Ofrecer el código también si la usas como servicio por red |
+| Usar la app, también con fines comerciales | Dar crédito al autor original y conservar el copyright ([NOTICE](NOTICE)) |
+| Estudiar y modificar el código | Publicar el código fuente de tus modificaciones bajo `GPL-2.0-only OR GPL-3.0-only` |
+| Redistribuirla o venderla | Ofrecer el código fuente completo a quien la reciba |
 | | Indicar qué cambiaste y cuándo |
 
-Cualquier mejora o versión derivada debe seguir siendo open source bajo la misma licencia. Para contribuir, consulta [CONTRIBUTING.md](CONTRIBUTING.md).
+Cualquier mejora o versión derivada debe seguir siendo open source bajo las mismas licencias (GPL-2.0 o GPL-3.0). Para contribuir, consulta [CONTRIBUTING.md](CONTRIBUTING.md).
